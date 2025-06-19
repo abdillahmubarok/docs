@@ -1,25 +1,17 @@
 ---
 title: Token Endpoint
 description: API reference for the Mubarokah ID OAuth 2.0 Token Endpoint (/oauth/token). Used to exchange authorization codes or refresh tokens for access tokens.
+api: 'POST /oauth/token'
 ---
 
 # Token Endpoint
 
 The Token Endpoint is used to obtain an access token (and optionally a refresh token) by presenting an authorization grant. Mubarokah ID supports multiple grant types at this endpoint, primarily the `authorization_code` grant, `refresh_token` grant, and `client_credentials` grant.
 
-<RequestExample method="POST" url="https://mubarokah.id/oauth/token">
-  ```text Basic
-  POST /oauth/token HTTP/1.1
-  Host: mubarokah.id
-  Content-Type: application/x-www-form-urlencoded
-  Authorization: Basic base64(client_id:client_secret) // Optional if client_id/secret in body
-  ...
-  ```
-</RequestExample>
-
 All requests to the token endpoint **must be `POST` requests** and the body **must be `application/x-www-form-urlencoded`**.
 
 Client authentication can be performed either by including `client_id` and `client_secret` in the request body or by using HTTP Basic authentication with the `client_id` as the username and `client_secret` as the password.
+If using HTTP Basic Auth, include a header like: `Authorization: Basic base64(your_client_id:your_client_secret)`.
 
 ## Grant Types Supported
 
@@ -27,16 +19,25 @@ Client authentication can be performed either by including `client_id` and `clie
   <Tab title="Authorization Code Grant">
     This is the most common grant type used after a user authorizes your application. You exchange the `authorization_code` (obtained from the redirect to your `redirect_uri` after user consent) for an access token and a refresh token.
 
-    **Request Body Parameters (`application/x-www-form-urlencoded`):**
-
-    | Parameter        | Type   | Required | Description                                                                     |
-    |------------------|--------|----------|---------------------------------------------------------------------------------|
-    | `grant_type`     | string | ✅        | **Must be `authorization_code`**.                                               |
-    | `code`           | string | ✅        | The authorization code received from the `/oauth/authorize` redirect.           |
-    | `redirect_uri`   | string | ✅        | The same `redirect_uri` that was used in the initial authorization request.     |
-    | `client_id`      | string | ✅        | Your application's Client ID. (Required if not using Basic Auth header)           |
-    | `client_secret`  | string | ✅        | Your application's Client Secret. (Required if not using Basic Auth header)       |
-    | `code_verifier`  | string | ❌        | If PKCE was used in the authorization request, this is the original `code_verifier` string. Required for public clients that used PKCE. |
+    **Request Body Parameters:**
+    <ParamField body="grant_type" type="string" required={true}>
+      **Must be `authorization_code`**.
+    </ParamField>
+    <ParamField body="code" type="string" required={true}>
+      The authorization code received from the `/oauth/authorize` redirect.
+    </ParamField>
+    <ParamField body="redirect_uri" type="string" required={true}>
+      The same `redirect_uri` that was used in the initial authorization request.
+    </ParamField>
+    <ParamField body="client_id" type="string" required={true}>
+      Your application's Client ID. (Required if not using HTTP Basic Auth header for client authentication).
+    </ParamField>
+    <ParamField body="client_secret" type="string" required={true}>
+      Your application's Client Secret. (Required if not using HTTP Basic Auth header for client authentication).
+    </ParamField>
+    <ParamField body="code_verifier" type="string">
+      If PKCE was used in the authorization request, this is the original `code_verifier` string. Required for public clients that used PKCE.
+    </ParamField>
 
     **Example Request (Node.js - Server-Side):**
     ```javascript
@@ -53,6 +54,7 @@ Client authentication can be performed either by including `client_id` and `clie
       params.append('grant_type', 'authorization_code');
       params.append('code', code);
       params.append('redirect_uri', REDIRECT_URI);
+      // If not using Basic Auth header, include client_id and client_secret in body
       params.append('client_id', CLIENT_ID);
       params.append('client_secret', CLIENT_SECRET);
 
@@ -100,15 +102,22 @@ Client authentication can be performed either by including `client_id` and `clie
   <Tab title="Refresh Token Grant">
     When an access token expires, you can use a refresh token to obtain a new access token (and potentially a new refresh token) without requiring the user to re-authenticate.
 
-    **Request Body Parameters (`application/x-www-form-urlencoded`):**
-
-    | Parameter        | Type   | Required | Description                                                                 |
-    |------------------|--------|----------|-----------------------------------------------------------------------------|
-    | `grant_type`     | string | ✅        | **Must be `refresh_token`**.                                                |
-    | `refresh_token`  | string | ✅        | The refresh token issued to your application.                               |
-    | `client_id`      | string | ✅        | Your application's Client ID. (Required if not using Basic Auth header)       |
-    | `client_secret`  | string | ✅        | Your application's Client Secret. (Required if not using Basic Auth header)   |
-    | `scope`          | string | ❌        | Optional. A space-separated list of scopes. You can request a subset of the original scopes. If omitted, the new access token will have the same scopes as the original, or a default set if the refresh token is not scoped. |
+    **Request Body Parameters:**
+    <ParamField body="grant_type" type="string" required={true}>
+      **Must be `refresh_token`**.
+    </ParamField>
+    <ParamField body="refresh_token" type="string" required={true}>
+      The refresh token issued to your application.
+    </ParamField>
+    <ParamField body="client_id" type="string" required={true}>
+      Your application's Client ID. (Required if not using HTTP Basic Auth).
+    </ParamField>
+    <ParamField body="client_secret" type="string" required={true}>
+      Your application's Client Secret. (Required if not using HTTP Basic Auth).
+    </ParamField>
+    <ParamField body="scope" type="string">
+      Optional. A space-separated list of scopes. You can request a subset of the original scopes. If omitted, the new access token will have the same scopes as the original, or a default set if the refresh token is not scoped.
+    </ParamField>
 
     **Example Request (Node.js - Server-Side):**
     ```javascript
@@ -169,14 +178,19 @@ Client authentication can be performed either by including `client_id` and `clie
   <Tab title="Client Credentials Grant">
     This grant is used for machine-to-machine (M2M) authentication, where your application needs to access its own resources or act on its own behalf, not on behalf of a user.
 
-    **Request Body Parameters (`application/x-www-form-urlencoded`):**
-
-    | Parameter        | Type   | Required | Description                                                                 |
-    |------------------|--------|----------|-----------------------------------------------------------------------------|
-    | `grant_type`     | string | ✅        | **Must be `client_credentials`**.                                           |
-    | `client_id`      | string | ✅        | Your application's Client ID. (Required if not using Basic Auth header)       |
-    | `client_secret`  | string | ✅        | Your application's Client Secret. (Required if not using Basic Auth header)   |
-    | `scope`          | string | ❌        | Optional. A space-separated list of scopes relevant to your application's own operations (e.g., `internal-stats-access`). |
+    **Request Body Parameters:**
+    <ParamField body="grant_type" type="string" required={true}>
+      **Must be `client_credentials`**.
+    </ParamField>
+    <ParamField body="client_id" type="string" required={true}>
+      Your application's Client ID. (Required if not using HTTP Basic Auth).
+    </ParamField>
+    <ParamField body="client_secret" type="string" required={true}>
+      Your application's Client Secret. (Required if not using HTTP Basic Auth).
+    </ParamField>
+    <ParamField body="scope" type="string">
+      Optional. A space-separated list of scopes relevant to your application's own operations (e.g., `internal-stats-access`).
+    </ParamField>
 
     **Example Request (Node.js - Server-Side):**
     ```javascript
@@ -236,13 +250,21 @@ Client authentication can be performed either by including `client_id` and `clie
 
 Upon a successful request, the token endpoint will return a JSON object containing:
 
-| Parameter       | Type   | Description                                                                                                |
-|-----------------|--------|------------------------------------------------------------------------------------------------------------|
-| `access_token`  | string | The access token that your application can use to make requests to protected resources on behalf of the user or itself. |
-| `token_type`    | string | Typically `Bearer`. Indicates how the access token should be used in API requests (e.g., `Authorization: Bearer <access_token>`). |
-| `expires_in`    | number | The lifetime of the access token in seconds (e.g., `3600` for 1 hour, `86400` for 24 hours).                |
-| `refresh_token` | string | (Optional) An opaque token that can be used to obtain a new access token when the current one expires. Usually returned with the `authorization_code` grant. |
-| `scope`         | string | (Optional) If the granted scopes are different from what was requested, this parameter will list the actual granted scopes. |
+<ResponseField name="access_token" type="string" required={true}>
+  The access token that your application can use to make requests to protected resources on behalf of the user or itself.
+</ResponseField>
+<ResponseField name="token_type" type="string" required={true}>
+  Typically `Bearer`. Indicates how the access token should be used in API requests (e.g., `Authorization: Bearer <access_token>`).
+</ResponseField>
+<ResponseField name="expires_in" type="number" required={true}>
+  The lifetime of the access token in seconds (e.g., `3600` for 1 hour, `86400` for 24 hours).
+</ResponseField>
+<ResponseField name="refresh_token" type="string">
+  (Optional) An opaque token that can be used to obtain a new access token when the current one expires. Usually returned with the `authorization_code` grant.
+</ResponseField>
+<ResponseField name="scope" type="string">
+  (Optional) If the granted scopes are different from what was requested, this parameter will list the actual granted scopes.
+</ResponseField>
 
 ## Error Responses
 

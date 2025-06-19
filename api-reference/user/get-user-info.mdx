@@ -1,72 +1,52 @@
 ---
 title: Get Basic User Information
 description: API reference for fetching basic profile information of the authenticated user (/api/user).
+api: 'GET /api/user'
+authMethod: 'bearer'
 ---
 
 # Get Basic User Information
 
 This endpoint retrieves basic profile information for the user associated with the provided access token.
 
-<RequestExample method="GET" url="https://mubarokah.id/api/user">
-  ```bash cURL
-  curl -X GET https://mubarokah.id/api/user \
-    -H "Authorization: Bearer {YOUR_ACCESS_TOKEN}" \
-    -H "Accept: application/json"
-  ```
-
-  ```javascript Node.js
-  const fetch = require('node-fetch');
-
-  async function getUserInfo(accessToken) {
-    try {
-      const response = await fetch('https://mubarokah.id/api/user', {
-        method: 'GET',
-        headers: {
-          'Authorization': \`Bearer \${accessToken}\`,
-          'Accept': 'application/json'
-        }
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        // Handle common errors like 401 (Unauthorized) or 403 (Forbidden)
-        if (response.status === 401) {
-          throw new Error('Unauthorized: Access token is invalid or expired.');
-        }
-        if (response.status === 403) {
-          throw new Error('Forbidden: Access token does not have the required scope (view-user).');
-        }
-        throw new Error(errorData.message || \`API request failed with status \${response.status}\`);
-      }
-
-      const userData = await response.json();
-      console.log(userData);
-      return userData;
-    } catch (error) {
-      console.error('Error fetching user info:', error.message);
-      throw error;
-    }
-  }
-
-  // Replace with the actual access token
-  // getUserInfo("USER_ACCESS_TOKEN_HERE");
-  ```
-</RequestExample>
-
-## Authorization
-
--   **Method**: Bearer Token
--   **Header**: `Authorization: Bearer {access_token}`
+## Authorization Headers
+<ParamField header="Authorization" type="string" required={true}>
+  The Bearer token for authentication. Example: `Bearer {YOUR_ACCESS_TOKEN}`
+</ParamField>
+<ParamField header="Accept" type="string" default="application/json">
+  Specifies the desired response format.
+</ParamField>
 
 ## Required Scope
-
 -   `view-user`
 
 Your application must request the `view-user` scope during the OAuth authorization flow to access this endpoint. If the access token does not have this scope, a `403 Forbidden` error will be returned.
 
 ## Successful Response (200 OK)
 
-A successful request returns a JSON object containing the user's basic profile information.
+A successful request returns a JSON object containing the user's basic profile information. The API playground will show an example response.
+
+**Response Fields:**
+<ResponseField name="id" type="number" required={true}>
+  The unique identifier for the user.
+</ResponseField>
+<ResponseField name="name" type="string" required={true}>
+  The full name of the user.
+</ResponseField>
+<ResponseField name="email" type="string" required={true}>
+  The primary email address of the user.
+</ResponseField>
+<ResponseField name="profile_picture" type="string">
+  URL to the user's profile picture. May be `null`.
+</ResponseField>
+<ResponseField name="username" type="string" required={true}>
+  The user's chosen username.
+</ResponseField>
+<ResponseField name="gender" type="string">
+  The gender of the user (e.g., "male", "female", "other"). May be `null`.
+</ResponseField>
+
+## Example Successful Response
 
 ```json
 {
@@ -78,17 +58,6 @@ A successful request returns a JSON object containing the user's basic profile i
   "gender": "male"
 }
 ```
-
-**Fields:**
-
-| Field             | Type   | Description                                     |
-|-------------------|--------|-------------------------------------------------|
-| `id`              | number | The unique identifier for the user.             |
-| `name`            | string | The full name of the user.                      |
-| `email`           | string | The primary email address of the user.          |
-| `profile_picture` | string | URL to the user's profile picture. May be null. |
-| `username`        | string | The user's chosen username.                     |
-| `gender`          | string | The gender of the user (e.g., "male", "female", "other"). May be null. |
 
 ## Error Responses
 

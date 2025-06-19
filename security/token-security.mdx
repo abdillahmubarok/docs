@@ -1,0 +1,141 @@
+---
+title: Token Security Best Practices
+description: Detailed guidelines for securely handling, storing, and transmitting Mubarokah ID OAuth 2.0 tokens.
+---
+
+# Token Security Best Practices
+
+OAuth 2.0 tokens (access tokens and refresh tokens) are sensitive credentials that grant access to user resources. Handling them securely is paramount to protect user data and prevent unauthorized access.
+
+## Transmitting Tokens
+
+<Callout type="check" title="Always use HTTPS (TLS)">
+  All communication involving tokens, including requests to the token endpoint and API calls using access tokens, **must** occur over HTTPS. This encrypts the tokens in transit, protecting them from interception (Man-in-the-Middle attacks).
+</Callout>
+
+## Storing Tokens Securely
+
+The appropriate storage mechanism for tokens depends on the type of application and the type of token.
+
+### Access Tokens
+
+Access tokens are typically short-lived but grant direct access to resources.
+
+-   **Server-Side Web Applications:**
+    -   **Recommended:** Store access tokens in secure, server-side session mechanisms. The session identifier should be stored in an HttpOnly, Secure, SameSite cookie. The application server then attaches the access token to upstream API requests.
+    -   This approach prevents direct exposure of the access token to the browser, mitigating XSS risks.
+
+-   **Single Page Applications (SPAs):**
+    -   **Recommended (with Backend For Frontend - BFF):** If your SPA has a BFF, the BFF can manage tokens (including refresh tokens) and store them securely (e.g., encrypted in a database or a secure server-side cache). The SPA communicates with the BFF, which then calls the resource server. The BFF can use secure cookies to manage the SPA's session.
+    -   **In-Memory (Browser):** If no BFF is used, store access tokens in JavaScript variables within a restricted scope (e.g., a service or closure). This is generally safer than `localStorage` or `sessionStorage` as it's not susceptible to XSS in the same way. However, tokens are lost on page refresh, requiring a new token (e.g., via refresh token flow if possible, or re-authentication).
+    -   **`localStorage` / `sessionStorage` (Use with Extreme Caution):** While common, storing tokens here is vulnerable to XSS attacks. If an XSS vulnerability exists on your site, malicious scripts can exfiltrate tokens stored in web storage. If you must use it, ensure you have robust XSS protection (Content Security Policy, input sanitization, output encoding).
+
+-   **Mobile Applications:**
+    -   Utilize the secure storage facilities provided by the operating system:
+        -   **iOS:** Keychain Services.
+        -   **Android:** EncryptedSharedPreferences or the Android Keystore system.
+    -   Do not hardcode tokens or store them in insecure plain text files.
+
+### Refresh Tokens
+
+Refresh tokens are long-lived and can be used to obtain new access tokens. They are highly sensitive.
+
+-   **Server-Side Web Applications & BFFs:**
+    -   **Recommended:** Store refresh tokens on the server-side, encrypted, in a secure database or secrets manager. Associate them with the user account.
+-   **SPAs (without BFF):**
+    -   **Avoid storing refresh tokens in the browser if possible.** If a refresh token must be persisted for an SPA without a BFF, using a secure, HttpOnly cookie (managed by the auth server or a backend component that can set such cookies for the SPA's domain) is a more secure option than web storage. This makes the refresh token inaccessible to JavaScript. However, this requires careful setup regarding cookie domain, path, and SameSite attributes, and protection against CSRF for the refresh token endpoint.
+-   **Mobile Applications:**
+    -   Store refresh tokens using the same secure OS storage mechanisms as access tokens (Keychain for iOS, EncryptedSharedPreferences/Keystore for Android).
+
+```typescript
+// Conceptual Secure Token Manager for SPAs (Illustrative)
+// This is a simplified example for in-memory storage.
+class SpaTokenManager {
+  private accessToken: string | null = null;
+  private refreshToken: string | null = null; // Ideally, refresh token is handled by a BFF
+  private tokenExpiryTime: number | null = null; // Store as timestamp
+
+  constructor() {
+    // Attempt to load from a more secure place if available, e.g., HttpOnly cookie via BFF
+  }
+
+  setTokens(accessToken: string, refreshToken?: string, expiresIn?: number) {
+    this.accessToken = accessToken;
+    if (refreshToken) this.refreshToken = refreshToken; // Be very careful with browser storage of refresh tokens
+
+    if (expiresIn) {
+      this.tokenExpiryTime = Date.now() + (expiresIn * 1000) - (60 * 1000); // Set expiry with 1 min buffer
+    }
+    console.log("Tokens set in memory.");
+  }
+
+  getAccessToken(): string | null {
+    if (this.accessToken && this.tokenExpiryTime && Date.now() >= this.tokenExpiryTime) {
+      // Token likely expired, attempt refresh or clear
+      console.log("Access token expired or nearing expiry.");
+      // Implement refresh logic here if refreshToken is available and managed securely
+      // For now, just clear it
+      this.clearTokens();
+      return null;
+    }
+    return this.accessToken;
+  }
+
+  // Refresh token logic would be more complex and ideally server-managed
+  // getRefreshToken(): string | null { return this.refreshToken; }
+
+  clearTokens() {
+    this.accessToken = null;
+    this.refreshToken = null; // Clear refresh token
+    this.tokenExpiryTime = null;
+    console.log("Tokens cleared from memory.");
+    // Also clear from any persistent storage if used
+  }
+
+  // Example: Schedule automatic refresh (conceptual, needs robust error handling & secure refresh token management)
+  // scheduleTokenRefresh() {
+  //   if (this.tokenExpiryTime && this.refreshToken) {
+  //     const refreshTime = this.tokenExpiryTime - Date.now() - 300000; // 5 mins before actual expiry
+  //     if (refreshTime > 0) {
+  //       setTimeout(async () => {
+  //         try {
+  //           // const newTokens = await mubarokahOAuthService.refreshToken(this.refreshToken);
+  //           // this.setTokens(newTokens.access_token, newTokens.refresh_token, newTokens.expires_in);
+  //         } catch (error) {
+  //           this.clearTokens(); // Refresh failed, clear tokens
+  //           // redirect to login or notify user
+  //         }
+  //       }, refreshTime);
+  //     }
+  //   }
+  // }
+}
+```
+<Callout type="warning" title="Never Expose Client Secrets or Refresh Tokens Client-Side">
+  Your `client_secret` and, ideally, `refresh_tokens` should never be exposed to or stored in client-side JavaScript accessible by the user's browser in SPAs. These should be managed by a secure backend component.
+</Callout>
+
+## Token Lifetime and Expiry
+
+-   **Short-Lived Access Tokens:** Mubarokah ID issues access tokens with a specific lifetime (e.g., 1 hour, 24 hours). This limits the duration for which a compromised token can be used.
+-   **Refresh Token Usage:** Use refresh tokens to obtain new access tokens when the current one expires. This avoids repeatedly asking the user to log in.
+-   **Graceful Expiry Handling:** Your application must anticipate token expiry.
+    1.  Check the `expires_in` value (or calculate the expiry timestamp) when tokens are received.
+    2.  Before making an API call, check if the token is about to expire.
+    3.  If expired, attempt to refresh it using the refresh token.
+    4.  If refresh fails (e.g., refresh token is also expired or revoked), or if no refresh token is available, the user must re-authenticate through the full OAuth 2.0 flow.
+-   **Server-Side Clock Skew:** Be mindful of potential clock skew between your server and the Mubarokah ID server when calculating expiry. It's often safer to treat tokens as expired slightly before their actual expiry time.
+
+## Other Important Practices
+
+-   **Do Not Log Tokens:** Avoid logging access tokens or refresh tokens in your application logs, as this can create a security risk if logs are compromised.
+-   **Do Not Transmit Tokens in URLs:** Tokens should be transmitted in request headers (`Authorization: Bearer {token}`) or, for the token endpoint, in the POST body. Avoid passing tokens in URL query parameters.
+-   **Audience Restriction (if supported):** If Mubarokah ID access tokens include an `aud` (audience) claim, your resource servers should validate that the token's audience matches their own identifier.
+-   **Issuer Validation (if tokens are JWTs):** If tokens are JWTs, validate the `iss` (issuer) claim to ensure they were issued by Mubarokah ID.
+-   **Token Revocation:** If Mubarokah ID provides a token revocation endpoint:
+    -   Call it when a user logs out of your application.
+    -   Call it if a user revokes your application's consent via Mubarokah ID settings (if a webhook for this is provided).
+    -   Call it if you detect a token may have been compromised.
+-   **Principle of Least Privilege (Scopes):** Always request the minimum set of scopes necessary for your application's functionality. Do not request `detail-user` if you only need `view-user`.
+
+By following these best practices, you can significantly improve the security of your Mubarokah ID OAuth 2.0 integration.

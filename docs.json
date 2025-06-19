@@ -1,101 +1,138 @@
 {
   "$schema": "https://mintlify.com/docs.json",
+  "name": "Mubarokah ID API",
   "theme": "mint",
-  "name": "Mubarokah ID",
-  "colors": {
-    "primary": "#0c0f3c",
-    "light": "#22a6f9",
-    "dark": "#566ef8"
+  "logo": {
+    "light": "/logo/light.svg",
+    "dark": "/logo/dark.svg"
   },
-  "favicon": "/favicon-mubarokah-id.ico",
-  "navigation": {
-    "tabs": [
-      {
-        "tab": "Guides",
-        "groups": [
-          {
-            "group": "Get Started",
-            "pages": [
-              "index",
-              "quickstart",
-              "development"
-            ]
-          },
-          {
-            "group": "Essentials",
-            "pages": [
-              "essentials/markdown",
-              "essentials/code",
-              "essentials/images",
-              "essentials/settings",
-              "essentials/navigation",
-              "essentials/reusable-snippets"
-            ]
-          }
-        ]
-      },
-      {
-        "tab": "API Reference",
-        "groups": [
-          {
-            "group": "API Documentation",
-            "pages": [
-              "api-reference/introduction"
-            ]
-          },
-          {
-            "group": "Endpoint Examples",
-            "pages": [
-              "api-reference/endpoint/get",
-              "api-reference/endpoint/create",
-              "api-reference/endpoint/delete",
-              "api-reference/endpoint/webhook"
-            ]
-          }
-        ]
+  "favicon": "/favicon.svg",
+  "colors": {
+    "primary": "#4D46C9",
+    "light": "#7D7AFF",
+    "dark": "#3A3494"
+  },
+  "api": {
+    "mdx": {
+      "server": "https://mubarokah.id",
+      "auth": {
+        "method": "bearer"
       }
-    ],
-    "global": {
-      "anchors": [
+    },
+    "playground": {
+      "display": "interactive"
+    },
+    "examples": {
+      "languages": ["curl", "javascript", "python", "php"]
+    }
+  },
+  "topbarLinks": [
+    {
+      "name": "Support",
+      "url": "mailto:support@mubarokah.id"
+    }
+  ],
+  "topbarCtaButton": {
+    "name": "Dashboard",
+    "url": "https://mubarokah.id/dashboard"
+  },
+  "anchors": [
+    {
+      "anchor": "Documentation",
+      "icon": "book-open-cover",
+      "href": "https://docs.mubarokah.id"
+    },
+    {
+      "anchor": "Community",
+      "icon": "users",
+      "href": "https://community.mubarokah.id"
+    },
+    {
+      "anchor": "Blog",
+      "icon": "newspaper",
+      "href": "https://blog.mubarokah.id"
+    }
+  ],
+  "navigation": [
+    {
+      "group": "Getting Started",
+      "pages": [
+        "introduction",
+        "quickstart"
+      ]
+    },
+    {
+      "group": "Core Concepts",
+      "pages": [
+        "core-concepts/what-is-mubarokah-id",
+        "core-concepts/architecture-overview",
+        "core-concepts/prerequisites",
+        "core-concepts/scopes-and-permissions"
+      ]
+    },
+    {
+      "group": "Guides",
+      "pages": [
+        "guides/oauth-flow",
         {
-          "anchor": "Documentation",
-          "href": "https://docs.mubarokah.id",
-          "icon": "book-open-cover"
-        },
-        {
-          "anchor": "Community",
-          "href": "https://chat.whatsapp.com/HQtyJMqfqq41KlrHLCvcFZ",
-          "icon": "whatsapp"
-        },
-        {
-          "anchor": "Blog",
-          "href": "https://mubarokah.com/posts",
-          "icon": "newspaper"
+          "group": "Framework Integration",
+          "pages": [
+            "guides/framework-integration/laravel",
+            "guides/framework-integration/nodejs",
+            "guides/framework-integration/python"
+          ]
         }
       ]
+    },
+    {
+      "group": "API Reference",
+      "pages": [
+        {
+          "group": "OAuth Endpoints",
+          "pages": [
+            "api-reference/oauth/authorize",
+            "api-reference/oauth/token"
+          ]
+        },
+        {
+          "group": "User API",
+          "pages": [
+            "api-reference/user/get-user-info",
+            "api-reference/user/get-user-details"
+          ]
+        },
+        "api-reference/error-codes"
+      ]
+    },
+    {
+      "group": "Security",
+      "pages": [
+        "security/oauth-checklist",
+        "security/token-security",
+        "security/input-validation",
+        "security/threat-modeling",
+        "security/penetration-testing"
+      ]
+    },
+    {
+      "group": "Advanced Topics",
+      "pages": [
+        "performance/caching",
+        "performance/connection-optimization",
+        "testing/unit-testing",
+        "testing/load-testing",
+        "production/deployment",
+        "production/ci-cd",
+        "production/health-monitoring",
+        "troubleshooting/error-resolution",
+        "troubleshooting/runbooks",
+        "operations/monitoring-debugging"
+      ]
     }
-  },
-  "logo": {
-    "light": "/logo/mubarokah-id-light.svg",
-    "dark": "/logo/mubarokah-id-dark.svg"
-  },
-  "navbar": {
-    "links": [
-      {
-        "label": "Support",
-        "href": "mailto:hey@mubarokah.com"
-      }
-    ],
-    "primary": {
-      "type": "button",
-      "label": "Dashboard",
-      "href": "https://mubarokah.id/dashboard"
-    }
-  },
-  "footer": {
-    "socials": {
-      "x": "https://x.com/mubarokah_id/",
-      "linkedin": "https://www.linkedin.com/company/mubarokah/"
-    }
+  ],
+  "footerSocials": {
+    "twitter": "https://twitter.com/mubarokah_id",
+    "github": "https://github.com/mubarokah-id",
+    "linkedin": "https://linkedin.com/company/mubarokah-id"
   }
 }
