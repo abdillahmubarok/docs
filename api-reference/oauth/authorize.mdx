@@ -1,0 +1,107 @@
+---
+title: Authorization Endpoint
+description: API reference for the Mubarokah ID OAuth 2.0 Authorization Endpoint (/oauth/authorize).
+---
+
+# Authorization Endpoint
+
+This endpoint initiates the OAuth 2.0 authorization process. Your application redirects the user's browser to this endpoint to request their consent for accessing their Mubarokah ID data.
+
+<RequestExample method="GET" url="https://mubarokah.id/oauth/authorize">
+  ```text Basic
+  GET /oauth/authorize HTTP/1.1
+  Host: mubarokah.id
+  ...
+  ```
+</RequestExample>
+
+## Parameters
+
+The following query parameters can be included in the GET request:
+
+| Parameter             | Type   | Required | Description                                                                                                |
+|-----------------------|--------|----------|------------------------------------------------------------------------------------------------------------|
+| `response_type`       | string | ✅        | **Must be `code`**. Indicates that your application is requesting an authorization code.                     |
+| `client_id`           | string | ✅        | Your application's unique Client ID, obtained during registration.                                             |
+| `redirect_uri`        | string | ✅        | The URL where Mubarokah ID will redirect the user after they authorize (or deny) your application. This URL must exactly match one of the redirect URIs registered for your application. |
+| `scope`               | string | ❌        | A space-separated list of [scopes](../../core-concepts/scopes-and-permissions) your application is requesting (e.g., `view-user detail-user`). If not provided, a default set of scopes may be assumed or result in an error, depending on server configuration. |
+| `state`               | string | 🔸        | An opaque value used by your application to maintain state between the request and callback. It's also used to prevent Cross-Site Request Forgery (CSRF) attacks. This value will be returned to your application as part of the redirect URI. **Highly Recommended.** |
+| `prompt`              | string | ❌        | Optional. Valid values include: <br/> - `consent`: Forces the consent screen to be shown even if the user has previously authorized your application for the requested scopes. <br/> - `login`: Forces the user to re-authenticate even if they have an active session. |
+| `code_challenge`      | string | ❌        | Used for [PKCE (Proof Key for Code Exchange)](../../guides/oauth-flow#pkce-proof-key-for-code-exchange). The Base64 URL-encoded SHA256 hash of the `code_verifier`. Required for public clients (e.g., mobile apps, SPAs) that cannot securely store a client secret. |
+| `code_challenge_method`| string | ❌        | Used for PKCE. Specifies the method used to derive the `code_challenge`. **Must be `S256`** if `code_challenge` is provided. |
+
+## Example Request
+
+Here's how you might construct the authorization URL in JavaScript:
+
+```javascript
+function generateSecureRandom(length) {
+  // Implement a cryptographically secure random string generator
+  // For example, using window.crypto for browsers
+  const array = new Uint32Array(Math.ceil(length / 4));
+  window.crypto.getRandomValues(array);
+  let result = '';
+  for (let i = 0; i < array.length; i++) {
+    result += array[i].toString(16).padStart(8, '0');
+  }
+  return result.slice(0, length);
+}
+
+const clientId = "your_app_client_id";
+const redirectUri = "https://yourapp.com/oauth/callback";
+const scopes = ['view-user', 'detail-user']; // Or just 'view-user'
+
+// Generate and store state for CSRF protection
+const state = generateSecureRandom(32);
+sessionStorage.setItem('oauth_request_state', state); // Store in session to verify on callback
+
+// For PKCE (if applicable, typically for public clients)
+// const codeVerifier = generateSecureRandom(64);
+// sessionStorage.setItem('oauth_code_verifier', codeVerifier);
+// const encoder = new TextEncoder();
+// const data = encoder.encode(codeVerifier);
+// const digest = await window.crypto.subtle.digest('SHA-256', data);
+// const codeChallenge = btoa(String.fromCharCode(...new Uint8Array(digest)))
+//   .replace(/\+/g, '-')
+//   .replace(/\//g, '_')
+//   .replace(/=+$/, '');
+
+const params = new URLSearchParams({
+  response_type: 'code',
+  client_id: clientId,
+  redirect_uri: redirectUri,
+  scope: scopes.join(' '),
+  state: state,
+  // prompt: 'consent', // Uncomment to force consent screen
+  // code_challenge: codeChallenge, // Uncomment for PKCE
+  // code_challenge_method: 'S256' // Uncomment for PKCE
+});
+
+const authorizationUrl = \`https://mubarokah.id/oauth/authorize?\${params.toString()}\`;
+
+// Redirect the user's browser to this URL
+// window.location.href = authorizationUrl;
+
+console.log("Constructed Authorization URL:", authorizationUrl);
+```
+<Info>
+Remember to replace placeholder values like `your_app_client_id` and `https://yourapp.com/oauth/callback` with your actual application details.
+The `state` parameter is crucial for security. Generate a unique, unguessable value for each authorization request and validate it upon callback.
+</Info>
+
+## Responses
+
+Upon successful user authentication and authorization, Mubarokah ID redirects the user's browser to your specified `redirect_uri` with an `authorization_code` and the `state` parameter.
+
+**Example Success Redirect:**
+```
+https://yourapp.com/callback?code=SPLITED_AUTHORIZATION_CODE&state=YOUR_OPAQUE_CSRF_TOKEN
+```
+
+If the user denies authorization or an error occurs, the redirect will include an `error` parameter.
+
+**Example Error Redirect:**
+```
+https://yourapp.com/callback?error=access_denied&error_description=The+user+denied+access+to+your+application.&state=YOUR_OPAQUE_CSRF_TOKEN
+```
+Refer to the [Error Codes section](../error-codes) for a list of possible OAuth errors.

@@ -1,0 +1,139 @@
+---
+title: Get Detailed User Information
+description: API reference for fetching detailed profile information of the authenticated user (/api/user/details). Requires special permissions.
+---
+
+# Get Detailed User Information
+
+This endpoint retrieves more sensitive and detailed profile information for the user associated with the provided access token. Access to this endpoint is restricted and requires specific permissions beyond basic user authentication.
+
+<RequestExample method="GET" url="https://mubarokah.id/api/user/details">
+  ```bash cURL
+  curl -X GET https://mubarokah.id/api/user/details \
+    -H "Authorization: Bearer {YOUR_ACCESS_TOKEN}" \
+    -H "Accept: application/json"
+  ```
+
+  ```javascript Node.js
+  const fetch = require('node-fetch');
+
+  async function getUserDetails(accessToken) {
+    try {
+      const response = await fetch('https://mubarokah.id/api/user/details', {
+        method: 'GET',
+        headers: {
+          'Authorization': \`Bearer \${accessToken}\`,
+          'Accept': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        // Handle common errors
+        if (response.status === 401) {
+          throw new Error('Unauthorized: Access token is invalid or expired.');
+        }
+        if (response.status === 403) {
+          if (errorData.error === 'unapproved_scope') {
+            throw new Error('Forbidden: Your application requires admin approval to access the detail-user scope.');
+          }
+          throw new Error('Forbidden: Access token does not have the required scope (detail-user) or other restriction applies.');
+        }
+        throw new Error(errorData.message || \`API request failed with status \${response.status}\`);
+      }
+
+      const userDetails = await response.json();
+      console.log(userDetails);
+      return userDetails;
+    } catch (error) {
+      console.error('Error fetching user details:', error.message);
+      throw error;
+    }
+  }
+
+  // Replace with the actual access token that has the 'detail-user' scope
+  // getUserDetails("USER_ACCESS_TOKEN_WITH_DETAIL_SCOPE_HERE");
+  ```
+</RequestExample>
+
+## Authorization
+
+-   **Method**: Bearer Token
+-   **Header**: `Authorization: Bearer {access_token}`
+
+## Required Scope & Special Approval
+
+-   **Scope**: `detail-user`
+-   **Admin Approval**: Access to the `detail-user` scope (and thus this endpoint) requires **explicit administrative approval** for your client application. Requesting the `detail-user` scope during the OAuth flow is not sufficient on its own.
+
+<Warning>
+  **Administrative Approval Required:**
+  Attempting to access this endpoint with an access token that includes the `detail-user` scope will still result in a `403 Forbidden` error if your application has not been granted administrative approval for this level of data access.
+  Please refer to the [Scopes and Permissions documentation](../../core-concepts/scopes-and-permissions#detail-user-scope-approval-process) for details on the approval process.
+</Warning>
+
+## Successful Response (200 OK)
+
+A successful request returns a JSON object containing the user's detailed profile information.
+
+```json
+{
+  "id": 12345,
+  "name": "John Doe",
+  "email": "john.doe@example.com",
+  "profile_picture": "https://s3.amazonaws.com/avatars/user123.jpg",
+  "username": "johndoe",
+  "gender": "male",
+  "bio": "Software engineer passionate about OAuth 2.0 and building great APIs.",
+  "phone_number": "+6281234567890",
+  "place_of_birth": "Jakarta, Indonesia",
+  "date_of_birth": "1990-01-15",
+  "address": "123 Main Street, Anytown, Jakarta, 12345"
+}
+```
+
+**Fields:**
+Includes all fields from the [Basic User Information](./get-user-info) endpoint, plus:
+
+| Field            | Type   | Description                                     |
+|------------------|--------|-------------------------------------------------|
+| `bio`            | string | A short biography or description from the user. May be null. |
+| `phone_number`   | string | The user's verified phone number. May be null.  |
+| `place_of_birth` | string | The user's place of birth. May be null.         |
+| `date_of_birth`  | string | The user's date of birth (YYYY-MM-DD). May be null. |
+| `address`        | string | The user's physical address. May be null.       |
+
+<Info>
+The availability of these fields depends on what information the user has provided to Mubarokah ID and the specific permissions granted. Some fields might be `null`.
+</Info>
+
+## Error Responses
+
+Common error responses include:
+
+-   **401 Unauthorized**:
+    -   If the access token is missing, invalid, or expired.
+    ```json
+    {
+      "message": "Unauthenticated."
+    }
+    ```
+-   **403 Forbidden**:
+    -   If the access token is valid but does not have the `detail-user` scope.
+    ```json
+    {
+      "error": "insufficient_scope",
+      "error_description": "The request requires higher privileges than provided by the access token.",
+      "message": "Invalid scope(s) provided."
+    }
+    ```
+    -   If the access token has the `detail-user` scope, but the client application has not received administrative approval for this scope.
+    ```json
+    {
+      "error": "unapproved_scope",
+      "message": "Your application needs approval to access detailed user information. Please contact support.",
+      "error_description": "Client application has not been approved for the 'detail-user' scope."
+    }
+    ```
+
+Refer to the general [Error Codes section](../error-codes) for more details on other possible errors.

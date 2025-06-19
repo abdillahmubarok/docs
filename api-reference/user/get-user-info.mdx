@@ -1,0 +1,121 @@
+---
+title: Get Basic User Information
+description: API reference for fetching basic profile information of the authenticated user (/api/user).
+---
+
+# Get Basic User Information
+
+This endpoint retrieves basic profile information for the user associated with the provided access token.
+
+<RequestExample method="GET" url="https://mubarokah.id/api/user">
+  ```bash cURL
+  curl -X GET https://mubarokah.id/api/user \
+    -H "Authorization: Bearer {YOUR_ACCESS_TOKEN}" \
+    -H "Accept: application/json"
+  ```
+
+  ```javascript Node.js
+  const fetch = require('node-fetch');
+
+  async function getUserInfo(accessToken) {
+    try {
+      const response = await fetch('https://mubarokah.id/api/user', {
+        method: 'GET',
+        headers: {
+          'Authorization': \`Bearer \${accessToken}\`,
+          'Accept': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        // Handle common errors like 401 (Unauthorized) or 403 (Forbidden)
+        if (response.status === 401) {
+          throw new Error('Unauthorized: Access token is invalid or expired.');
+        }
+        if (response.status === 403) {
+          throw new Error('Forbidden: Access token does not have the required scope (view-user).');
+        }
+        throw new Error(errorData.message || \`API request failed with status \${response.status}\`);
+      }
+
+      const userData = await response.json();
+      console.log(userData);
+      return userData;
+    } catch (error) {
+      console.error('Error fetching user info:', error.message);
+      throw error;
+    }
+  }
+
+  // Replace with the actual access token
+  // getUserInfo("USER_ACCESS_TOKEN_HERE");
+  ```
+</RequestExample>
+
+## Authorization
+
+-   **Method**: Bearer Token
+-   **Header**: `Authorization: Bearer {access_token}`
+
+## Required Scope
+
+-   `view-user`
+
+Your application must request the `view-user` scope during the OAuth authorization flow to access this endpoint. If the access token does not have this scope, a `403 Forbidden` error will be returned.
+
+## Successful Response (200 OK)
+
+A successful request returns a JSON object containing the user's basic profile information.
+
+```json
+{
+  "id": 12345,
+  "name": "John Doe",
+  "email": "john.doe@example.com",
+  "profile_picture": "https://s3.amazonaws.com/avatars/user123.jpg",
+  "username": "johndoe",
+  "gender": "male"
+}
+```
+
+**Fields:**
+
+| Field             | Type   | Description                                     |
+|-------------------|--------|-------------------------------------------------|
+| `id`              | number | The unique identifier for the user.             |
+| `name`            | string | The full name of the user.                      |
+| `email`           | string | The primary email address of the user.          |
+| `profile_picture` | string | URL to the user's profile picture. May be null. |
+| `username`        | string | The user's chosen username.                     |
+| `gender`          | string | The gender of the user (e.g., "male", "female", "other"). May be null. |
+
+## Error Responses
+
+Common error responses include:
+
+-   **401 Unauthorized**:
+    -   If the access token is missing, invalid, or expired.
+    ```json
+    {
+      "message": "Unauthenticated."
+    }
+    ```
+    ```json
+    {
+        "error": "token_expired",
+        "error_description": "The access token provided has expired.",
+        "message": "The access token provided has expired."
+    }
+    ```
+-   **403 Forbidden**:
+    -   If the access token is valid but does not have the required `view-user` scope.
+    ```json
+    {
+      "error": "insufficient_scope",
+      "error_description": "The request requires higher privileges than provided by the access token.",
+      "message": "Invalid scope(s) provided."
+    }
+    ```
+
+Refer to the general [Error Codes section](../error-codes) for more details on other possible errors.
