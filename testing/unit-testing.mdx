@@ -1,0 +1,179 @@
+---
+title: Unit Testing for OAuth Integrations
+description: Strategies and examples for unit testing components of your Mubarokah ID OAuth 2.0 client integration.
+---
+
+# Unit Testing for OAuth Integrations
+
+Unit testing is essential for ensuring the reliability and correctness of the individual components within your Mubarokah ID OAuth 2.0 client integration. By isolating and testing specific functions or classes, you can catch bugs early and refactor with confidence.
+
+## What to Unit Test?
+
+Focus on testing the logic within your application that handles:
+
+-   **OAuth Service/Client:**
+    -   Correct generation of authorization URLs (including `state`, `scope`, PKCE parameters).
+    -   Proper construction of requests to the token endpoint for various grant types.
+    -   Parsing and validation of responses from Mubarokah ID (token response, user info response).
+    -   Token refresh logic.
+-   **Callback Handler:**
+    -   `state` parameter validation.
+    -   Error handling from the callback (e.g., `error` and `error_description` parameters).
+    -   Interaction with the OAuth service to exchange the code for tokens.
+    -   User provisioning or lookup in your local database.
+    -   Session creation.
+-   **Token Management:**
+    -   Secure storage and retrieval of tokens (mocking the actual storage mechanism).
+    -   Encryption/decryption logic if you're encrypting tokens.
+    -   Token expiry checks.
+-   **API Client for Mubarokah ID Resources:**
+    -   Correct attachment of access tokens to outgoing requests.
+    -   Handling of API error responses (e.g., 401, 403).
+
+## Mocking Dependencies
+
+A key aspect of unit testing OAuth integrations is mocking external dependencies, particularly the HTTP client used to communicate with Mubarokah ID's servers. You don't want your unit tests to make actual network calls.
+
+-   **HTTP Client Mocks:** Most testing frameworks or HTTP client libraries provide ways to mock requests and responses.
+    -   **JavaScript (Jest):** `jest.mock('axios')` or `jest.fn()` for fetch.
+    -   **Python (unittest.mock):** `@patch` decorator or `MagicMock`.
+    -   **PHP (PHPUnit):** Mocking Guzzle clients or using mock handlers.
+-   **Session Mocks:** Mock session objects to test `state` storage and retrieval.
+-   **Database/Cache Mocks:** Mock database interactions (for user lookup/creation) and cache operations (for token storage).
+
+## Example Unit Tests (Conceptual TypeScript/Jest)
+
+These examples illustrate how you might unit test parts of an `MubarokahOAuthService` similar to the one in the framework integration guides.
+
+```typescript
+// __tests__/MubarokahOAuthService.test.ts
+// import { MubarokahOAuthService } from '../services/MubarokahOAuthService'; // Adjust path
+// import axios from 'axios'; // Assuming axios is used by the service
+
+// jest.mock('axios'); // Mock the entire axios module
+// const mockedAxios = axios as jest.Mocked<typeof axios>;
+
+// describe('MubarokahOAuthService', () => {
+//   let oauthService: MubarokahOAuthService;
+//   const mockConfig = {
+//     clientId: 'test-client-id',
+//     clientSecret: 'test-client-secret',
+//     redirectUri: 'https://yourapp.com/callback',
+//     baseUrl: 'https://mubarokah.id',
+//     scopes: ['view-user']
+//   };
+
+//   beforeEach(() => {
+//     // Reset mocks before each test
+//     mockedAxios.post.mockReset();
+//     mockedAxios.get.mockReset();
+//     // oauthService = new MubarokahOAuthService(mockConfig, mockedAxios); // If passing axios instance
+//     oauthService = new MubarokahOAuthService(mockConfig); // If axios is imported directly in service
+//   });
+
+//   describe('getAuthorizationUrl', () => {
+//     it('should generate a correct authorization URL without PKCE', () => {
+//       const authData = oauthService.getAuthorizationUrl(['view-user'], false);
+//       expect(authData.url).toContain(`client_id=${mockConfig.clientId}`);
+//       expect(authData.url).toContain(`redirect_uri=${encodeURIComponent(mockConfig.redirectUri)}`);
+//       expect(authData.url).toContain('response_type=code');
+//       expect(authData.url).toContain('scope=view-user');
+//       expect(authData.state).toBeDefined();
+//       expect(authData.url).not.toContain('code_challenge');
+//       expect(authData.codeVerifier).toBeUndefined();
+//     });
+
+//     it('should generate a correct authorization URL with PKCE', () => {
+//       const authData = oauthService.getAuthorizationUrl(['view-user', 'detail-user'], true);
+//       expect(authData.url).toContain('scope=view-user%20detail-user');
+//       expect(authData.url).toContain('code_challenge=');
+//       expect(authData.url).toContain('code_challenge_method=S256');
+//       expect(authData.state).toBeDefined();
+//       expect(authData.codeVerifier).toBeDefined();
+//       expect(authData.codeVerifier).toHaveLength(128); // Example check for verifier
+//     });
+//   });
+
+//   describe('exchangeCodeForTokens', () => {
+//     it('should successfully exchange an authorization code for tokens', async () => {
+//       const mockTokenResponse = {
+//         access_token: 'mock-access-token',
+//         refresh_token: 'mock-refresh-token',
+//         expires_in: 3600,
+//         token_type: 'Bearer',
+//         scope: 'view-user'
+//       };
+//       mockedAxios.post.mockResolvedValueOnce({ data: mockTokenResponse, status: 200 });
+
+//       const tokens = await oauthService.exchangeCodeForTokens('auth-code-123');
+
+//       expect(mockedAxios.post).toHaveBeenCalledWith(
+//         `${mockConfig.baseUrl}/oauth/token`,
+//         expect.stringContaining('grant_type=authorization_code'),
+//         expect.any(Object) // For headers
+//       );
+//       expect(tokens).toEqual(mockTokenResponse);
+//     });
+
+//     it('should include code_verifier if provided for PKCE', async () => {
+//       mockedAxios.post.mockResolvedValueOnce({ data: { access_token: 'pkce-token'}, status: 200 });
+//       await oauthService.exchangeCodeForTokens('auth-code-pkce', 'test_code_verifier');
+
+//       expect(mockedAxios.post).toHaveBeenCalledWith(
+//         expect.any(String),
+//         expect.stringContaining('code_verifier=test_code_verifier'),
+//         expect.any(Object)
+//       );
+//     });
+
+//     it('should throw MubarokahOAuthException on token exchange failure', async () => {
+//       const errorResponse = {
+//         error: 'invalid_grant',
+//         error_description: 'Authorization code has expired'
+//       };
+//       mockedAxios.post.mockRejectedValueOnce({ response: { data: errorResponse, status: 400 } });
+
+//       await expect(oauthService.exchangeCodeForTokens('expired-code'))
+//         .rejects
+//         .toThrow('Authorization code has expired'); // Or your custom MubarokahOAuthException
+//     });
+//   });
+
+//   describe('getUserInfo', () => {
+//     it('should fetch user information with a valid access token', async () => {
+//       const mockUser = { id: '123', name: 'Test User', email: 'test@example.com' };
+//       mockedAxios.get.mockResolvedValueOnce({ data: mockUser, status: 200 });
+
+//       const user = await oauthService.getUserInfo('valid-access-token');
+
+//       expect(mockedAxios.get).toHaveBeenCalledWith(
+//         `${mockConfig.baseUrl}/api/user`,
+//         { headers: { 'Authorization': 'Bearer valid-access-token', 'Accept': 'application/json' } }
+//       );
+//       expect(user).toEqual(mockUser);
+//     });
+
+//     it('should throw MubarokahOAuthException on API error (e.g., 401)', async () => {
+//       mockedAxios.get.mockRejectedValueOnce({ response: { data: { message: 'Unauthenticated.'}, status: 401 } });
+
+//       await expect(oauthService.getUserInfo('invalid-token'))
+//         .rejects
+//         .toThrow('Unauthenticated.'); // Or your custom exception
+//     });
+//   });
+// });
+```
+<Callout type="note" title="Framework-Specific Testing">
+  - **Laravel (PHPUnit):** Use `Http::fake()` to mock Guzzle HTTP requests. Test your controllers by making HTTP requests to your routes and asserting responses or session changes.
+  - **FastAPI (Pytest with HTTPX):** Use `pytest-httpx` to mock `httpx` calls. Test your route handlers using FastAPI's `TestClient`.
+</Callout>
+
+## Best Practices for Unit Testing OAuth Logic
+
+-   **Test Edge Cases:** Cover scenarios like invalid inputs, error responses from the server, expired tokens, and state mismatches.
+-   **Keep Tests Independent:** Each unit test should be able to run independently and not rely on the state of other tests.
+-   **Focus on Logic, Not External Services:** Unit tests should verify *your* code's logic, not the correctness of Mubarokah ID's servers.
+-   **Clear Naming:** Name your tests clearly to indicate what they are testing.
+-   **Refactor with Tests:** Write tests before or during development/refactoring to ensure changes don't break existing functionality.
+
+While unit tests don't replace integration or end-to-end tests, they form a critical foundation for building a robust and secure Mubarokah ID OAuth client.

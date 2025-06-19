@@ -1,0 +1,236 @@
+---
+title: Health Monitoring & Observability
+description: Setting up health checks, comprehensive monitoring, and observability for your Mubarokah ID integrated application in production.
+---
+
+# Health Monitoring & Observability
+
+Once your Mubarokah ID integrated application is deployed to production, continuous health monitoring and observability are crucial for ensuring its reliability, performance, and for quickly diagnosing issues.
+
+## Health Check Endpoints
+
+Implement health check endpoints in your application that can be used by load balancers, orchestration platforms (like Kubernetes), or uptime monitoring services.
+
+-   **Purpose:** To indicate whether your application instance is running correctly and able to serve requests, including its ability to interact with critical downstream services if necessary (though this needs careful consideration).
+-   **Basic Health Check:**
+    -   Responds with HTTP 200 OK if the application is running.
+    -   Example path: `/health`, `/status`.
+-   **Deep Health Check (Optional & Use with Caution):**
+    -   May check connectivity to essential services like your database, cache (Redis), or even make a lightweight test call to a Mubarokah ID status endpoint (if available and permitted).
+    -   **Caution:** Deep checks that call external services can be problematic if those services are temporarily down, causing your app instances to appear unhealthy and be restarted or removed from service unnecessarily. It's often better to have separate monitoring for downstream dependencies.
+
+**Conceptual Health Controller (Laravel - from `hasil.mdx`):**
+```php
+<?php
+// namespace App\Http\Controllers;
+
+// use Illuminate\Http\Request;
+// use Illuminate\Support\Facades\DB;
+// use Illuminate\Support\Facades\Redis;
+// use Illuminate\Support\Facades\Storage;
+// use Illuminate\Support\Facades\Mail; // For a mail service check example
+
+// class HealthController extends Controller
+// {
+//     public function check(Request $request)
+//     {
+//         $checks = [
+//             'application' => ['status' => 'ok', 'message' => 'Application is running'],
+//             'database' => $this->checkDatabase(),
+//             'redis' => $this->checkRedis(),
+//             // 'mubarokah_id_connectivity' => $this->checkMubarokahConnectivity(), // Example
+//         ];
+
+//         $overallStatus = 'ok';
+//         foreach ($checks as $check) {
+//             if ($check['status'] === 'error') {
+//                 $overallStatus = 'error';
+//                 break;
+//             }
+//         }
+
+//         $response = [
+//             'status' => $overallStatus,
+//             'timestamp' => now()->toISOString(),
+//             'checks' => $checks,
+//             'version' => config('app.version', '1.0.0'), // Your app version
+//             'environment' => config('app.env'),
+//         ];
+
+//         return response()->json($response, $overallStatus === 'ok' ? 200 : 503);
+//     }
+
+//     private function checkDatabase(): array
+//     {
+//         try {
+//             DB::connection()->getPdo();
+//             return ['status' => 'ok'];
+//         } catch (\Exception $e) {
+//             return ['status' => 'error', 'message' => $e->getMessage()];
+//         }
+//     }
+
+//     private function checkRedis(): array
+//     {
+//         try {
+//             Redis::connection()->ping();
+//             return ['status' => 'ok'];
+//         } catch (\Exception $e) {
+//             return ['status' => 'error', 'message' => $e->getMessage()];
+//         }
+//     }
+
+    // Example for checking Mubarokah ID connectivity (use cautiously)
+    // private function checkMubarokahConnectivity(): array
+    // {
+    //     try {
+    //         // Attempt a lightweight, non-authenticated call if one exists,
+    //         // or check against a known Mubarokah ID status endpoint.
+    //         // For example, trying to resolve DNS or a HEAD request to base URL.
+    //         $client = new \GuzzleHttp\Client(['timeout' => 5]);
+    //         $response = $client->head(config('services.mubarokah.base_url', 'https://mubarokah.id'));
+    //         if ($response->getStatusCode() >= 200 && $response->getStatusCode() < 400) {
+    //             return ['status' => 'ok'];
+    //         }
+    //         return ['status' => 'error', 'message' => 'Non-success status from Mubarokah ID base URL.'];
+    //     } catch (\Exception $e) {
+    //         return ['status' => 'error', 'message' => 'Failed to connect to Mubarokah ID: ' . $e->getMessage()];
+    //     }
+    // }
+// }
+```
+<Callout type="tip">
+Define clearly what constitutes "healthy" for your application. A basic check usually confirms the app process is running and can respond.
+</Callout>
+
+## Comprehensive Monitoring Setup
+
+Beyond simple uptime checks, implement comprehensive monitoring to gain insights into your application's performance, error rates, and resource usage, especially concerning Mubarokah ID interactions.
+
+### Key Metrics to Monitor:
+
+**1. OAuth Flow Metrics:**
+    -   **Authorization Request Rate:** Number of redirects to Mubarokah ID's `/oauth/authorize`.
+    -   **Callback Success/Failure Rate:** Success and error rates for your `/auth/mubarokah/callback` endpoint.
+        -   Distinguish errors (e.g., `invalid_state`, `access_denied` from user, Mubarokah ID errors).
+    -   **Token Exchange Success/Failure Rate:** Success and error rates for calls to Mubarokah ID's `/oauth/token` endpoint.
+        -   Track specific errors like `invalid_grant`, `invalid_client`.
+    -   **Token Refresh Success/Failure Rate:** Monitor how often refresh token attempts succeed or fail.
+    -   **Latency:**
+        -   Duration of your callback processing.
+        -   Latency of token exchange calls to Mubarokah ID.
+        -   Latency of token refresh calls.
+
+**2. API Interaction Metrics (calls from your server to Mubarokah ID's `/api/*` endpoints):**
+    -   **Request Rate:** Number of calls to `/api/user`, `/api/user/details`, etc.
+    -   **Success/Error Rate:** HTTP status codes (2xx vs. 4xx/5xx) from these API calls.
+        -   Specifically track `401 Unauthorized` (token issues) and `403 Forbidden` (scope issues).
+    -   **Latency:** Response times for these API calls.
+
+**3. Application Performance Metrics (APM):**
+    -   Overall application request throughput, latency, and error rates.
+    -   CPU, memory, disk I/O, network I/O utilization of your servers.
+    -   Database performance (query latency, connection pool usage).
+    -   Cache performance (hit/miss rates, latency).
+
+**4. User-Centric Metrics:**
+    -   Successful user logins via Mubarokah ID over time.
+    -   Time taken for a user to complete the entire login flow.
+
+### Tools for Monitoring:
+
+-   **Application Performance Monitoring (APM):** Sentry, New Relic, Datadog, Dynatrace. These often provide SDKs to automatically instrument your code.
+-   **Metrics Collection & Visualization:**
+    -   **Prometheus:** An open-source metrics collection and alerting toolkit.
+    -   **Grafana:** An open-source platform for monitoring and observability, often used with Prometheus, InfluxDB, or other data sources to create dashboards.
+-   **Log Management:** Elasticsearch/OpenSearch + Kibana/OpenSearch Dashboards (ELK/OpenSearch Stack), Splunk, Logtail, Datadog Logs.
+
+### Conceptual Metrics Middleware (Laravel - from `hasil.mdx` inspiration)
+
+This illustrates how you might collect metrics using middleware.
+
+```php
+<?php
+// namespace App\Http\Middleware;
+
+// use Closure;
+// use Illuminate\Http\Request;
+// use Illuminate\Support\Facades\Log; // Or your preferred metrics library/facade
+// use Illuminate\Support\Str;
+// // Assume you have a Prometheus or StatsD client/facade available, e.g., through a service provider
+// // use App\Services\MetricsClient;
+
+// class MetricsMiddleware
+// {
+//     // protected MetricsClient $metricsClient;
+
+//     // public function __construct(MetricsClient $metricsClient)
+//     // {
+//     //     $this->metricsClient = $metricsClient;
+//     // }
+
+//     public function handle(Request $request, Closure $next)
+//     {
+//         $start = microtime(true);
+
+//         $response = $next($request); // Process the request
+
+//         $duration = (microtime(true) - $start) * 1000; // Milliseconds
+//         $route = $request->route()?->getName() ?? $request->path();
+//         $method = $request->method();
+//         $status = $response->getStatusCode();
+
+//         // Example: Record HTTP request duration
+//         // $this->metricsClient->histogram('http_request_duration_ms', $duration, [
+//         //     'method' => $method,
+//         //     'route' => $route,
+//         //     'status_code' => $status,
+//         // ]);
+//         Log::info("METRICS: http_request_duration_ms", ['duration' => $duration, 'method' => $method, 'route' => $route, 'status_code' => $status]);
+
+
+//         // Example: Increment OAuth request counters
+//         if (Str::startsWith($route, 'mubarokah.')) { // Assuming your OAuth routes are named like 'mubarokah.callback'
+//             // $this->metricsClient->counter('oauth_requests_total', [
+//             //     'route' => $route,
+//             //     'status_code' => $status,
+//             // ]);
+//             Log::info("METRICS: oauth_requests_total", ['route' => $route, 'status_code' => $status]);
+//         }
+
+//         if ($status >= 500) {
+//             // $this->metricsClient->counter('http_server_errors_total', ['route' => $route]);
+//             Log::info("METRICS: http_server_errors_total", ['route' => $route]);
+//         } elseif ($status >= 400) {
+//             // $this->metricsClient->counter('http_client_errors_total', ['route' => $route]);
+//             Log::info("METRICS: http_client_errors_total", ['route' => $route]);
+//         }
+
+//         return $response;
+//     }
+// }
+```
+<Callout type="info">
+Register this middleware in your Laravel application's HTTP kernel. Use a proper metrics library (like a Prometheus or StatsD client) instead of just logging for production.
+</Callout>
+
+### Example Grafana Dashboard Panels (Conceptual)
+
+If using Prometheus and Grafana, you might create dashboards with panels like:
+
+-   **OAuth Request Rate:** `sum(rate(oauth_requests_total{job="your-app", route=~"mubarokah.*"}[5m])) by (route)`
+-   **OAuth Callback Error Rate:** `sum(rate(oauth_requests_total{job="your-app", route="mubarokah.callback", status_code=~"4.*|5.*"}[5m])) / sum(rate(oauth_requests_total{job="your-app", route="mubarokah.callback"}[5m])) * 100`
+-   **Token Exchange Latency (p95):** `histogram_quantile(0.95, sum(rate(http_request_duration_ms_bucket{job="your-app", route="mubarokah_token_exchange_internal_call"}[5m])) by (le))` (Assuming you instrument the call to the token endpoint).
+-   **API Call Latency to Mubarokah ID (p95):** Similar histogram for calls to `/api/user`.
+-   **Active User Sessions via Mubarokah ID:** A custom metric your app might expose.
+
+## Alerting
+
+Set up alerts based on your key metrics to be notified of issues proactively:
+-   High error rates for OAuth callbacks or token exchanges.
+-   Significant increase in latency for Mubarokah ID API calls.
+-   Mubarokah ID client errors (e.g., `invalid_client` if it suddenly starts appearing).
+-   Health check failures.
+-   High resource utilization on your servers.
+
+Effective health monitoring, metrics collection, and alerting are vital for maintaining a reliable and performant Mubarokah ID integration.

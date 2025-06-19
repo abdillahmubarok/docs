@@ -1,0 +1,102 @@
+---
+title: Get Detailed User Information
+description: API reference for fetching detailed profile information of the authenticated user (/api/user/details). Requires special permissions.
+api: 'GET /api/user/details'
+authMethod: 'bearer'
+---
+
+# Get Detailed User Information
+
+This endpoint retrieves more sensitive and detailed profile information for the user associated with the provided access token. Access to this endpoint is restricted and requires specific permissions beyond basic user authentication.
+
+## Authorization Headers
+<ParamField header="Authorization" type="string" required={true}>
+  The Bearer token for authentication. Example: `Bearer {YOUR_ACCESS_TOKEN}`
+</ParamField>
+<ParamField header="Accept" type="string" default="application/json">
+  Specifies the desired response format.
+</ParamField>
+
+## Required Scope & Special Approval
+
+-   **Scope**: `detail-user`
+-   **Admin Approval**: Access to the `detail-user` scope (and thus this endpoint) requires **explicit administrative approval** for your client application. Requesting the `detail-user` scope during the OAuth flow is not sufficient on its own.
+
+<Warning>
+  **Administrative Approval Required:**
+  Attempting to access this endpoint with an access token that includes the `detail-user` scope will still result in a `403 Forbidden` error if your application has not been granted administrative approval for this level of data access.
+  Please refer to the [Scopes and Permissions documentation](../../core-concepts/scopes-and-permissions#detail-user-scope-approval-process) for details on the approval process.
+</Warning>
+
+## Successful Response (200 OK)
+
+A successful request returns a JSON object containing the user's detailed profile information. This includes all fields from the [Basic User Information](./get-user-info) endpoint, plus the additional fields listed below. The API playground will show an example response.
+
+**Additional Response Fields:**
+<ResponseField name="bio" type="string">
+  A short biography or description from the user. May be `null`.
+</ResponseField>
+<ResponseField name="phone_number" type="string">
+  The user's verified phone number. May be `null`.
+</ResponseField>
+<ResponseField name="place_of_birth" type="string">
+  The user's place of birth. May be `null`.
+</ResponseField>
+<ResponseField name="date_of_birth" type="string">
+  The user's date of birth (YYYY-MM-DD). May be `null`.
+</ResponseField>
+<ResponseField name="address" type="string">
+  The user's physical address. May be `null`.
+</ResponseField>
+
+<Info>
+The availability of these fields depends on what information the user has provided to Mubarokah ID and the specific permissions granted. Some fields might be `null`.
+</Info>
+
+## Example Successful Response
+```json
+{
+  "id": 12345,
+  "name": "John Doe",
+  "email": "john.doe@example.com",
+  "profile_picture": "https://s3.amazonaws.com/avatars/user123.jpg",
+  "username": "johndoe",
+  "gender": "male",
+  "bio": "Software engineer passionate about OAuth 2.0 and building great APIs.",
+  "phone_number": "+6281234567890",
+  "place_of_birth": "Jakarta, Indonesia",
+  "date_of_birth": "1990-01-15",
+  "address": "123 Main Street, Anytown, Jakarta, 12345"
+}
+```
+
+## Error Responses
+
+Common error responses include:
+
+-   **401 Unauthorized**:
+    -   If the access token is missing, invalid, or expired.
+    ```json
+    {
+      "message": "Unauthenticated."
+    }
+    ```
+-   **403 Forbidden**:
+    -   If the access token is valid but does not have the `detail-user` scope.
+    ```json
+    {
+      "error": "insufficient_scope",
+      "error_description": "The request requires higher privileges than provided by the access token.",
+      "message": "Invalid scope(s) provided."
+    }
+    ```
+    -   If the access token has the `detail-user` scope, but the client application has not received administrative approval for this scope.
+    ```json
+    {
+      "error": "unapproved_scope",
+      "message": "Your application needs approval to access detailed user information. Please contact support.",
+      "error_description": "Client application has not been approved for the 'detail-user' scope."
+    }
+    ```
+
+Refer to the general [Error Codes section](../error-codes) for more details on other possible errors.

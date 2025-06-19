@@ -1,0 +1,153 @@
+---
+title: Runbook Templates for Common OAuth Issues
+description: Example runbook templates for diagnosing and resolving common critical and warning-level issues with Mubarokah ID OAuth integrations.
+---
+
+# Runbook Templates for Common OAuth Issues
+
+Runbooks provide a standardized set of procedures for operations and troubleshooting common incidents. Having runbook templates for your Mubarokah ID OAuth integration can help your team respond quickly and consistently to issues.
+
+<Callout type="note">
+These are templates. Adapt them with specific commands, contact points, and tool links relevant to **your application's** environment and the Mubarokah ID specifics.
+</Callout>
+
+## 🚨 Runbook: Critical - Complete Mubarokah ID Login Failure
+
+**Symptoms:**
+-   Users report they cannot log in via Mubarokah ID at all.
+-   All attempts to initiate login (redirect to `/oauth/authorize`) fail, or all callbacks from Mubarokah ID result in errors on your application's side.
+-   Monitoring shows a spike in 5xx errors from your OAuth callback endpoint or high error rates for token exchange.
+-   Error logs in your application show consistent failures like `invalid_client`, persistent `invalid_grant` even for new codes, or network errors connecting to Mubarokah ID.
+
+**Immediate Actions (First 5-15 Minutes):**
+
+1.  **Verify Mubarokah ID Service Status:**
+    -   Check if Mubarokah ID has a publicly available status page.
+    -   Attempt to access a known Mubarokah ID endpoint (e.g., their main website or a status API if available) from a neutral network to check for general availability.
+    -   **Command (example):** `curl -I https://mubarokah.id/oauth/authorize` (or a known health/status endpoint). Look for HTTP 200 or 302 (for authorize).
+
+2.  **Check Your Application's Connectivity to Mubarokah ID:**
+    -   From your application server(s), test connectivity to `https://mubarokah.id` (or the specific OAuth/API base URL).
+    -   **Commands (examples):**
+        -   `ping mubarokah.id` (if ICMP is allowed)
+        -   `curl -v https://mubarokah.id/oauth/token` (observe TLS handshake and connection attempt)
+        -   `openssl s_client -connect mubarokah.id:443`
+
+3.  **Review Your Application's Critical Logs:**
+    -   Check logs for your OAuth controller/service, focusing on the period when failures started.
+    -   Look for errors related to: client ID/secret, redirect URI validation, token exchange failures, SSL errors, network timeouts.
+    -   **Command (example):** `tail -f /var/log/your-app/oauth-errors.log` or use your centralized logging platform.
+
+4.  **Verify Client Credentials & Configuration:**
+    -   **Without exposing secrets in logs/console**, confirm that your application is loading the correct `MUBAROKAH_CLIENT_ID`, `MUBAROKAH_CLIENT_SECRET`, and `MUBAROKAH_REDIRECT_URI` from its configuration (environment variables, config files).
+    -   Check for recent accidental changes to these configurations.
+
+**Investigation Steps (Next 15-60 Minutes):**
+
+1.  **Isolate the Scope:**
+    -   Is the failure affecting all users or a subset?
+    -   Did this start after a recent deployment or configuration change on your side? If so, consider immediate rollback if possible.
+2.  **Test with Known Working Credentials (if you have a separate test client for Mubarokah ID):**
+    -   If you have a separate, known-good test client configuration for Mubarokah ID, try the flow with that to see if the issue is specific to your main production client credentials.
+    -   **Command (conceptual, using Postman or cURL for token endpoint):**
+        ```bash
+        # curl -X POST https://mubarokah.id/oauth/token \
+        #  -H "Content-Type: application/x-www-form-urlencoded" \
+        #  -d "grant_type=client_credentials&client_id=TEST_CLIENT_ID&client_secret=TEST_CLIENT_SECRET"
+        ```
+        (This tests client credential grant, not the full user flow, but can indicate issues with basic client auth).
+3.  **Check Redirect URI Configuration:**
+    -   Verify the `redirect_uri` configured in your Mubarokah ID client registration exactly matches what your application is sending and expecting. Pay attention to HTTP vs. HTTPS, trailing slashes, and path.
+4.  **Review Application Resource Limits:** Check CPU, memory, network, and disk space on your servers to ensure they are not exhausted.
+5.  **SSL/TLS Certificate Issues:**
+    -   Ensure your server's SSL certificate (if your callback is HTTPS) is valid and not expired.
+    -   Ensure your server's list of trusted CA certificates is up-to-date for making outbound calls to Mubarokah ID.
+
+**Communication Template (Internal/Stakeholders):**
+```
+INCIDENT: Critical - Mubarokah ID Login Failure
+
+Severity: High
+Impact: All users unable to login/register via Mubarokah ID. Core functionality X, Y, Z affected.
+Start Time: [YYYY-MM-DD HH:MM UTC]
+Status: Investigating / Mitigating / Resolved
+
+Current Actions:
+- [Action taken 1]
+- [Action taken 2]
+
+Next Steps:
+- [Next diagnostic step]
+
+Contact: [Lead Engineer / On-call Person]
+```
+
+**Escalation:**
+-   If Mubarokah ID service status is red or connectivity issues are confirmed to be external to your app, prepare to contact Mubarokah ID support.
+-   If the issue is isolated to your application but cannot be resolved within [e.g., 1 hour], escalate to [Your Senior Engineering Lead / Relevant Team].
+
+---
+
+## ⚠️ Runbook: Warning - High OAuth Error Rate or Latency
+
+**Symptoms:**
+-   Monitoring shows an increased percentage of 4xx/5xx errors from Mubarokah ID endpoints (e.g., `invalid_grant`, `token_expired`, intermittent `503`s).
+-   Users report intermittent login failures or slow login process.
+-   API calls to Mubarokah ID `/api/user` are slower than usual or failing more often.
+
+**Immediate Actions (First 5-15 Minutes):**
+
+1.  **Identify Specific Errors & Endpoints:**
+    -   Use your monitoring/logging to pinpoint which OAuth errors are most frequent (e.g., `invalid_grant`, `invalid_request`) or which Mubarokah ID API endpoints are slow/failing.
+    -   **Command (example for logs):** `grep "MubarokahOAuthException" /var/log/your-app/app.log | tail -n 100` (or use your logging platform query).
+2.  **Check Mubarokah ID Status:** As with critical failures, check any Mubarokah ID status pages.
+3.  **Assess Scope:** Is this affecting a specific feature, user segment, or geographic region?
+
+**Investigation Steps (Next 15-60 Minutes):**
+
+1.  **`invalid_grant` / `token_expired` Spike:**
+    -   Could indicate issues with your token storage or retrieval (e.g., refresh tokens not being used correctly, or clock skew affecting expiry calculations).
+    -   Could be an issue on Mubarokah ID's side temporarily invalidating codes/tokens faster.
+    -   Review your application's logic for handling authorization codes (ensure they are used once and promptly) and refresh tokens.
+2.  **Increased Latency:**
+    -   **Network Path:** Use `traceroute` or `mtr` from your app server to `mubarokah.id` to check for network hops with high latency.
+    -   **Your Application Performance:** Profile your application code that handles OAuth callbacks and API calls to Mubarokah ID. Are there bottlenecks in your code?
+    -   **Mubarokah ID API Performance:** Check if Mubarokah ID has announced any performance degradations.
+    -   **Command (example for checking response times):**
+        ```bash
+        # curl -w "Connect: %{time_connect}s | TTFB: %{time_starttransfer}s | Total: %{time_total}s\n" -s -o /dev/null https://mubarokah.id/api/user -H "Authorization: Bearer DUMMY_TOKEN_FOR_TIMING_TEST_ONLY"
+        ```
+        (Replace DUMMY_TOKEN with a test token if needed, or test a public endpoint if one exists).
+3.  **Specific 4xx Errors (e.g., `invalid_request`, `invalid_scope`):**
+    -   This often points to an issue in your application's request formation.
+    -   Check for recent code changes that might have altered how requests are built.
+    -   Validate parameters being sent against Mubarokah ID documentation.
+4.  **Intermittent 5xx Errors from Mubarokah ID:**
+    -   This usually indicates a temporary issue on Mubarokah ID's side.
+    -   Ensure your application has retry logic with exponential backoff for such errors on idempotent read operations.
+    -   Monitor if the rate of 5xx errors is increasing or sustained.
+
+**Resolution/Mitigation Steps:**
+
+-   If due to your application code/config: Deploy a fix.
+-   If due to Mubarokah ID issues:
+    -   Implement circuit breaker pattern if calls are consistently failing to prevent cascading failures in your app.
+    -   Inform users of potential intermittent issues.
+    -   Contact Mubarokah ID support if the issue is severe or prolonged.
+
+**Communication Template (Internal):**
+```
+ALERT: Increased Mubarokah ID Error Rate / Latency
+
+Type: [e.g., invalid_grant spike, /api/user latency]
+Current Rate/Latency: [Actual metric] vs. Baseline [Baseline metric]
+Impact: [e.g., Some users experiencing login errors, Profile page slow to load]
+Start Time: [YYYY-MM-DD HH:MM UTC]
+Status: Investigating
+
+Details: [Link to monitoring graph or logs]
+
+Contact: [Lead Engineer / On-call Person]
+```
+
+These runbook templates should be living documents, updated as you learn more about your integration and potential failure modes.

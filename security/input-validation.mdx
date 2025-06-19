@@ -1,0 +1,179 @@
+---
+title: Input Validation and Sanitization
+description: Best practices for validating and sanitizing inputs in your Mubarokah ID OAuth 2.0 integration.
+---
+
+# Input Validation and Sanitization
+
+Proper input validation and sanitization are critical for securing your application during the OAuth 2.0 flow and when handling data received from Mubarokah ID. This helps prevent common web vulnerabilities such as Cross-Site Scripting (XSS), injection attacks, and other issues arising from processing untrusted data.
+
+## Key Principles
+
+-   **Validate All External Inputs:** Treat any data received from external sources as untrusted. This includes:
+    -   Parameters from the authorization redirect (`code`, `state`, `error`, `error_description`).
+    -   Data from the token endpoint response (`access_token`, `refresh_token`, `scope`, etc.).
+    -   User information received from API endpoints (`/api/user`, `/api/user/details`).
+-   **Server-Side Validation is Crucial:** While client-side validation can improve user experience, server-side validation is essential for security as client-side checks can be bypassed.
+-   **Be Specific:** Validate against expected formats, types, lengths, and ranges.
+-   **Fail Closed:** If validation fails, reject the request or data, and log the incident. Do not attempt to "fix" invalid input.
+
+## Validation During OAuth Flow
+
+### Authorization Callback (`redirect_uri`)
+
+When Mubarokah ID redirects the user back to your `redirect_uri`:
+
+<Checklist>
+  <Item checked={true}>
+    **`state` Parameter:**
+    -   **Action:** Strictly compare the received `state` parameter against the value you generated and stored in the user's session before initiating the OAuth flow.
+    -   **Purpose:** Prevents CSRF attacks. If they don't match, the request might be forged.
+    -   **Example (Conceptual PHP):**
+        ```php
+        // session_start();
+        // $received_state = $_GET['state'] ?? null;
+        // $stored_state = $_SESSION['oauth_state'] ?? null;
+        //
+        // if (empty($received_state) || empty($stored_state) || !hash_equals($stored_state, $received_state)) {
+        //     // Log error, abort request: Potential CSRF
+        //     unset($_SESSION['oauth_state']); // Clear stored state
+        //     die("Invalid state parameter. CSRF detected.");
+        // }
+        // unset($_SESSION['oauth_state']); // Clear after successful validation
+        ```
+  </Item>
+  <Item checked={true}>
+    **`code` Parameter (Authorization Code):**
+    -   **Action:** Check that the `code` is present and appears to be in a valid format (e.g., not overly long, consists of expected characters). Exact format is opaque to the client but basic checks can be done.
+    -   **Purpose:** Ensures you have a code to exchange for a token.
+  </Item>
+  <Item checked={true}>
+    **`error` and `error_description` Parameters:**
+    -   **Action:** If these parameters are present, the authorization was denied or an error occurred. Sanitize these values (e.g., HTML escape) if you plan to display them to the user, to prevent XSS.
+    -   **Purpose:** Securely inform the user or log the error.
+    -   **Example (Conceptual PHP for sanitizing output):**
+        ```php
+        // if (isset($_GET['error'])) {
+        //     $error = htmlspecialchars($_GET['error'], ENT_QUOTES, 'UTF-8');
+        //     $error_description = isset($_GET['error_description']) ?
+        //         htmlspecialchars($_GET['error_description'], ENT_QUOTES, 'UTF-8') :
+        //         'An unknown error occurred.';
+        //     // Display sanitized error to user or log it
+        //     echo "OAuth Error: " . $error . " - " . $error_description;
+        // }
+        ```
+  </Item>
+</Checklist>
+
+### Token Endpoint Response
+
+When you exchange an authorization code or refresh token for new tokens:
+
+<Checklist>
+  <Item checked={true}>
+    **`access_token`:**
+    -   **Action:** Verify it's present and a non-empty string. If it's a JWT and you need to inspect it client-side (generally not recommended for opaque tokens), validate its structure.
+    -   **Purpose:** Ensures you have a usable access token.
+  </Item>
+  <Item checked={true}>
+    **`token_type`:**
+    -   **Action:** Verify it is `Bearer` (case-insensitive comparison can be safer, then normalize to "Bearer").
+    -   **Purpose:** Ensures the token type is as expected for constructing `Authorization` headers.
+  </Item>
+  <Item checked={true}>
+    **`expires_in`:**
+    -   **Action:** Verify it's a positive integer.
+    -   **Purpose:** Correctly calculate the access token's actual expiry time.
+  </Item>
+  <Item checked={true}>
+    **`refresh_token` (if applicable):**
+    -   **Action:** Verify it's present (if expected for the grant type) and a non-empty string.
+    -   **Purpose:** Ensures you have a usable refresh token.
+  </Item>
+  <Item checked={true}>
+    **`scope` (if applicable):**
+    -   **Action:** Verify it's a string. Parse it (space-separated) and check if the granted scopes match what you requested or are acceptable.
+    -   **Purpose:** Ensures your application has the necessary permissions.
+  </Item>
+</Checklist>
+
+```php
+<?php
+// Conceptual Server-side validation for token response (PHP)
+// From "Security Guidelines Enterprise" -> "🚨 Input Validation & Sanitization"
+// class OAuthInputValidator
+// {
+//     public static function validateTokenResponse(array $tokenData): void
+//     {
+//         $requiredFields = ['access_token', 'token_type', 'expires_in'];
+//         foreach ($requiredFields as $field) {
+//             if (!isset($tokenData[$field]) || empty($tokenData[$field])) {
+//                 // Log error
+//                 throw new \InvalidArgumentException("Token response missing required field: {$field}");
+//             }
+//         }
+
+//         // Validate token_type (case-insensitive check, then normalize)
+//         if (strtolower($tokenData['token_type']) !== 'bearer') {
+//             // Log error
+//             throw new \InvalidArgumentException("Unsupported token type: " . $tokenData['token_type']);
+//         }
+
+//         // Validate expires_in
+//         if (!is_numeric($tokenData['expires_in']) || (int)$tokenData['expires_in'] <= 0) {
+//             // Log error
+//             throw new \InvalidArgumentException("Invalid expires_in value: " . $tokenData['expires_in']);
+//         }
+
+//         // Optional: Validate access_token format (e.g., if it's a JWT and you need to parse it)
+//         // This depends on whether the token is opaque or structured.
+//         // If it's an opaque token for your client, you might just check it's a non-empty string.
+//         // if (self::isPotentiallyJwt($tokenData['access_token']) && !self::isValidJWTStructure($tokenData['access_token'])) {
+//         //     throw new \InvalidArgumentException('Invalid access token format (JWT structure error)');
+//         // }
+//     }
+
+//     // private static function isPotentiallyJwt(string $token): bool
+//     // {
+//     //     return count(explode('.', $token)) === 3;
+//     // }
+
+//     // private static function isValidJWTStructure(string $token): bool
+//     // {
+//     //     $parts = explode('.', $token);
+//     //     if (count($parts) !== 3) return false;
+//     //     try {
+//     //         base64_decode($parts[0], true); // Header
+//     //         base64_decode($parts[1], true); // Payload
+//     //         // Signature part doesn't need to be base64_decodeable by client if not verifying
+//     //     } catch (\Exception $e) {
+//     //         return false; // Not valid base64
+//     //     }
+//     //     return true;
+//     // }
+// }
+
+// // Usage:
+// // $tokenDataFromResponse = json_decode($responseBody, true);
+// // OAuthInputValidator::validateTokenResponse($tokenDataFromResponse);
+?>
+```
+<Callout type="info">
+The PHP code example above is conceptual and demonstrates server-side validation logic for a token response. Adapt it to your specific language and framework.
+</Callout>
+
+## Validating User Information (from API responses)
+
+-   **Data Types:** Validate that fields match their expected types (e.g., `id` is a number/string, `email` looks like an email, `profile_picture` is a URL if present).
+-   **Sanitize for Display:** If you are displaying any user information directly in your application (especially in HTML), ensure it is properly sanitized/escaped to prevent XSS vulnerabilities. Use template engine features or libraries designed for this.
+    -   Example (Blade in Laravel): `{{ $userData->name }}` (auto-escapes)
+    -   Example (JavaScript, if setting innerHTML): `element.textContent = userData.name;` (safer than `innerHTML`)
+
+## General Best Practices
+
+-   **Use Well-Tested Libraries:** Leverage existing libraries for OAuth 2.0 client flows and data validation in your chosen language/framework, as they often have built-in protections.
+-   **Regular Expression (Regex) Wisely:** For complex string formats, use regex for validation but ensure your regex patterns are not susceptible to ReDoS (Regular Expression Denial of Service) attacks.
+-   **Error Handling:** Implement robust error handling for validation failures. Log attempts that fail validation for monitoring and security analysis.
+-   **Security Headers:** Implement security headers like Content Security Policy (CSP) to mitigate the impact of XSS vulnerabilities even if some unsanitized input makes it through.
+
+By diligently validating and sanitizing all inputs, you significantly strengthen your application's defense against common web attacks.

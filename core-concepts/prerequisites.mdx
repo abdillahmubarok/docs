@@ -1,0 +1,51 @@
+---
+title: Prerequisites
+description: Checklist of requirements before integrating Mubarokah ID.
+---
+
+# Prerequisites Checklist
+
+Before you begin integrating "Login with Mubarokah ID", ensure you meet the following technical, account, and knowledge requirements.
+
+## ✅ Technical Requirements
+
+-   [ ] **Backend Server**: Your application must have a backend server capable of securely storing your `client_secret` and making server-to-server HTTP requests to the token endpoint.
+-   [ ] **HTTPS Support**: All communication with Mubarokah ID, especially the `redirect_uri` and token exchange, must use HTTPS (TLS) for security. Production applications without HTTPS will not be supported.
+-   [ ] **HTTP Client**: Your backend needs an HTTP client library to make requests to the Mubarokah ID `/oauth/token` endpoint.
+-   [ ] **Session Management**: Ability to manage user sessions and store the `state` parameter for CSRF protection during the OAuth flow.
+-   [ ] **URL Handling**: Capability to correctly construct and handle redirect URIs.
+
+## ✅ Account Requirements
+
+-   [ ] **Registered Application**: Your application must be registered with Mubarokah ID. Contact the Mubarokah ID administrators to initiate the registration process.
+-   [ ] **Client Credentials**: Upon successful registration, you will receive:
+    -   `client_id`: Your application's unique identifier.
+    -   `client_secret`: A confidential secret known only to your application and Mubarokah ID. **Keep this secure!**
+-   [ ] **Redirect URIs**: You must provide one or more `redirect_uri`(s) during registration. These are the exact URLs Mubarokah ID will redirect users back to after authentication. They must be HTTPS for production.
+-   [ ] **Scope Permissions**: Determine the [scopes](./scopes-and-permissions) (permissions) your application needs (e.g., `view-user`).
+
+## ✅ Development Environment Setup
+
+Configure your development environment with the necessary credentials. It's highly recommended to use environment variables to store sensitive information.
+
+**Template for Environment Variables (`.env` file):**
+```bash
+MUBAROKAH_CLIENT_ID="your_client_id_here"
+MUBAROKAH_CLIENT_SECRET="your_client_secret_here"
+MUBAROKAH_REDIRECT_URI="https://yourapp.com/auth/callback" # Your registered redirect URI
+MUBAROKAH_BASE_URL="https://mubarokah.id" # Base URL for Mubarokah ID services
+```
+<Info>
+Replace placeholder values with your actual credentials and URIs. For local development, you might use an HTTP redirect URI like `http://localhost:3000/callback`, but ensure it's registered.
+</Info>
+
+## ✅ Knowledge Requirements
+
+-   [ ] **OAuth 2.0 Basics**: A fundamental understanding of OAuth 2.0 concepts, particularly the Authorization Code Grant flow.
+-   [ ] **HTTP/REST APIs**: Familiarity with making HTTP requests (GET, POST) and handling API responses, including headers and status codes.
+-   [ ] **JSON Handling**: Ability to parse and process JSON data, as API responses are typically in JSON format.
+-   [ ] **Security Best Practices**: Awareness of web security best practices, such as:
+    -   Securely storing client secrets.
+    -   Protecting against CSRF (Cross-Site Request Forgery) using the `state` parameter.
+    -   Implementing PKCE (Proof Key for Code Exchange) if you have a public client (like a mobile app or SPA without a backend component for token exchange).
+    -   Securely handling and storing tokens.
