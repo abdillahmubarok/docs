@@ -1,0 +1,122 @@
+---
+title: Threat Model Analysis for OAuth Integrations
+description: Understanding common attack vectors and mitigation strategies for Mubarokah ID OAuth 2.0 integrations.
+---
+
+# Threat Model Analysis for OAuth Integrations
+
+Threat modeling is a proactive approach to security, helping to identify potential threats, vulnerabilities, and attack vectors relevant to your Mubarokah ID OAuth 2.0 integration. By understanding these risks, you can implement appropriate mitigation strategies.
+
+## Common Attack Vectors & Mitigations
+
+The following table outlines common attack vectors in OAuth 2.0 implementations and recommended mitigations in the context of Mubarokah ID:
+
+| Attack Vector                       | Risk Level | Mitigation Strategy                                                                                                                                                              |
+|-------------------------------------|------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **Authorization Code Interception** | 🔴 High    | • **PKCE (RFC 7636):** Essential for public clients (mobile/SPA). Mubarokah ID supports PKCE. <br/> • **HTTPS:** Enforce TLS for all communication, especially the redirect URI. <br/> • **Short-Lived Codes:** Mubarokah ID authorization codes are short-lived (e.g., 10 minutes). <br/> • **Exact Redirect URI Matching:** Both client and server should enforce exact matches. |
+| **CSRF (Cross-Site Request Forgery) on Redirect URI** | 🔴 High    | • **`state` Parameter:** Use a unique, non-guessable `state` parameter in the authorization request and validate it upon callback. Store it in a secure session. <br/> • **SameSite Cookies:** Use `SameSite=Lax` or `SameSite=Strict` for session cookies if applicable to your client type. |
+| **Token Theft (Access/Refresh Tokens)** | 🟡 Medium  | • **Secure Storage:** Follow [Token Security Best Practices](./token-security) (e.g., HttpOnly cookies for web, Keychain/Keystore for mobile, server-side encryption for refresh tokens). <br/> • **Short-Lived Access Tokens:** Mubarokah ID issues access tokens with limited lifetimes. <br/> • **HTTPS:** Transmit tokens only over HTTPS. <br/> • **Refresh Token Rotation (if supported by server):** When a refresh token is used, issue a new refresh token and invalidate the old one. |
+| **Client Impersonation / Unauthorized Client** | 🔴 High    | • **Client Authentication:** Mubarokah ID requires client authentication (client ID & secret or other methods for confidential clients) at the token endpoint. <br/> • **Strict Redirect URI Validation:** Prevents codes/tokens from being sent to malicious sites. <br/> • **Secure `client_secret` Storage:** Never expose the `client_secret` in public clients or insecurely on servers. |
+| **Man-in-the-Middle (MitM) Attacks** | 🔴 High    | • **HTTPS Everywhere:** Enforce HTTPS for all connections to Mubarokah ID and within your application. <br/> • **Certificate Pinning (Advanced):** For mobile apps, consider certificate pinning for critical connections if high security is required. |
+| **XSS Leading to Token Extraction**   | 🟡 Medium  | • **HttpOnly Cookies:** If storing tokens in cookies for web apps, use the `HttpOnly` flag to prevent JavaScript access. <br/> • **Content Security Policy (CSP):** Implement a strong CSP to restrict script sources and mitigate XSS impact. <br/> • **Input Sanitization & Output Encoding:** Rigorously sanitize user inputs and encode outputs to prevent XSS vulnerabilities in your application. |
+| **Session Fixation**                | 🟠 Medium  | • **Session Regeneration:** After successful login/authentication via Mubarokah ID, regenerate the user's session ID in your application. <br/> • **Secure Session Handling:** Use built-in secure session management features of your framework. |
+| **Open Redirector Abuse**           | 🟠 Medium  | • **Strict Redirect URI Validation:** Ensure your application only redirects to allowlisted, validated URIs after login or other operations. Do not allow arbitrary redirection based on user input. |
+| **Leaked Client Credentials**         | 🔴 High    | • **Secure Storage:** Store `client_secret` in environment variables or a secrets management system. <br/> • **Credential Rotation:** Have a policy for rotating client secrets. <br/> • **Monitoring:** Monitor for anomalous use of client credentials. |
+| **Insufficient Scope Validation**     | 🟡 Medium  | • **Client-Side Check:** Your application should check that the scopes granted in the token response are sufficient for the intended operations. <br/> • **Resource Server Check:** Mubarokah ID's resource servers validate token scopes before granting access to resources. |
+
+<Callout type="note" title="Risk Levels">
+Risk levels (🔴 High, 🟡 Medium, 🟠 Low/Medium) are indicative and can vary based on your specific application architecture and the data it handles. Conduct your own risk assessment.
+</Callout>
+
+## Defense Implementation Examples (Conceptual)
+
+While specific implementations vary by language and framework, here are conceptual snippets highlighting some defense mechanisms:
+
+### CSRF Protection (`state` parameter)
+
+```javascript
+// Client-side (before redirect to /oauth/authorize)
+// const crypto = require('crypto'); // Node.js example
+// const state = crypto.randomBytes(20).toString('hex');
+// req.session.oauthState = state; // Store in user's session
+// const authorizationUrl = `https://mubarokah.id/oauth/authorize?client_id=...&state=\${state}...`;
+// res.redirect(authorizationUrl);
+
+// Client-side (at /callback endpoint)
+// const receivedState = req.query.state;
+// if (receivedState !== req.session.oauthState) {
+//   // Abort, possible CSRF attack!
+//   console.error("CSRF Mismatch: State does not match.");
+//   return res.status(403).send("Invalid state parameter.");
+// }
+// delete req.session.oauthState; // Clean up state from session
+```
+
+### PKCE (Proof Key for Code Exchange)
+
+Refer to [PKCE details in the OAuth Flow guide](../../guides/oauth-flow#pkce-proof-key-for-code-exchange) or the [OAuth Security Checklist](./oauth-checklist#implement-pkce-proof-key-for-code-exchange-for-public-clients).
+
+### JWT Validation (If Mubarokah ID issues JWT Access Tokens and you need to validate them)
+
+<Callout type="info">
+Mubarokah ID access tokens might be opaque strings from your application's perspective. If they are JWTs and you have the necessary public keys or introspection endpoint, you can perform additional validation. However, always treat them primarily as bearer tokens to be sent to Mubarokah ID's resource servers for validation.
+</Callout>
+
+```typescript
+// Conceptual JWT Validation (TypeScript)
+// import * as jwt from 'jsonwebtoken'; // Example using jsonwebtoken library
+// import jwksClient from 'jwks-rsa'; // For fetching keys from a JWKS endpoint
+
+// async function validateMubarokahIdToken(token: string): Promise<any> {
+//   // 1. Obtain Mubarokah ID's public signing key (e.g., from a JWKS endpoint)
+//   // const client = jwksClient({ jwksUri: 'https://mubarokah.id/.well-known/jwks.json' });
+//   // function getKey(header, callback){ ... client.getSigningKey(header.kid, (err, key) => {...}); }
+
+//   try {
+//     // Verify the token's signature and standard claims
+//     // const decoded = jwt.verify(token, getKey, {
+//     //   algorithms: ['RS256'], // Algorithm used by Mubarokah ID
+//     //   issuer: 'https://mubarokah.id', // Expected issuer
+//     //   audience: 'your_client_id_or_resource_server_identifier' // Expected audience
+//     // });
+//     // return decoded;
+
+//     // Simplified: If not verifying signature locally, but just decoding (less secure)
+//     const decodedPayload = jwt.decode(token);
+//     if (!decodedPayload) throw new Error("Invalid JWT token");
+
+//     if (decodedPayload.iss !== 'https://mubarokah.id') {
+//        throw new Error("Invalid JWT issuer");
+//     }
+//     if (decodedPayload.exp && Date.now() >= decodedPayload.exp * 1000) {
+//        throw new Error("JWT token expired");
+//     }
+//     // Further audience, scope checks etc.
+//     return decodedPayload;
+
+//   } catch (error) {
+//     console.error("JWT Validation Failed:", error.message);
+//     throw new Error("Invalid token.");
+//   }
+// }
+```
+
+### Content Security Policy (CSP)
+
+Implement CSP headers to mitigate XSS risks, which could lead to token theft from browser storage.
+
+```html
+<!-- Example CSP Header (can be set via HTTP headers from server) -->
+<!-- <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://trusted.cdn.com; object-src 'none'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' https://api.mubarokah.id; frame-ancestors 'none'; base-uri 'self'; form-action 'self' https://mubarokah.id;"> -->
+```
+<Callout type="warning" title="CSP Configuration">
+  CSP needs to be carefully configured to match your application's specific needs and resources. An overly restrictive policy can break your site, while a too-permissive one offers little protection.
+</Callout>
+
+## Regular Review
+
+-   **Periodically review your threat model:** As your application evolves or new vulnerabilities are discovered in web technologies, revisit and update your threat model.
+-   **Stay Updated:** Keep your server software, libraries, and frameworks up to date with security patches.
+-   **Security Audits:** Consider periodic security audits or penetration tests for your application, especially if handling sensitive data.
+
+By understanding these threats and actively implementing defensive measures, you can build a more secure OAuth 2.0 integration with Mubarokah ID.

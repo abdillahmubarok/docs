@@ -1,0 +1,187 @@
+---
+title: CI/CD Pipeline for OAuth Integrated Applications
+description: Implementing a Continuous Integration and Continuous Deployment (CI/CD) pipeline for applications with Mubarokah ID OAuth 2.0.
+---
+
+# CI/CD Pipeline for OAuth Integrated Applications
+
+A robust CI/CD (Continuous Integration/Continuous Deployment) pipeline is essential for reliably building, testing, and deploying your application that integrates with Mubarokah ID. It helps automate the release process, reduce manual errors, and ensure consistent deployments.
+
+## Key Stages in a CI/CD Pipeline
+
+A typical CI/CD pipeline for an application with OAuth integration might include the following stages:
+
+1.  **Code Commit:** Developer pushes code changes to a version control system (e.g., Git on GitHub, GitLab).
+2.  **Build:**
+    -   The CI server fetches the latest code.
+    -   Install dependencies (e.g., `npm install`, `composer install`, `pip install`).
+    -   Compile code if necessary (e.g., TypeScript to JavaScript, Java compilation).
+    -   Build artifacts (e.g., Docker image, deployment package).
+3.  **Automated Testing:**
+    -   **Unit Tests:** Run unit tests for all components, including your OAuth service, callback handlers, and token management logic. (See [Unit Testing Guide](../../testing/unit-testing)). Mock external Mubarokah ID calls.
+    -   **Integration Tests:** Test interactions between different parts of your application. This might involve testing the OAuth flow against a mocked Mubarokah ID server in your test environment.
+    -   **Static Code Analysis:** Run linters (e.g., ESLint, PHPStan, Flake8) and security scanners (e.g., Snyk, SonarQube) to catch issues early.
+4.  **Security Scans:**
+    -   Scan for vulnerabilities in dependencies.
+    -   Scan container images for known vulnerabilities if using Docker.
+5.  **Deploy to Staging/Testing Environment:**
+    -   Deploy the built artifact to a staging or testing environment that mirrors production as closely as possible.
+    -   Use staging-specific Mubarokah ID client credentials (NEVER production credentials).
+6.  **Automated Acceptance/E2E Tests (on Staging):**
+    -   Run end-to-end tests that simulate user flows, including the full "Login with Mubarokah ID" process against your mocked or a dedicated test Mubarokah ID environment (if available and permitted).
+    -   Tools: Cypress, Selenium, Playwright.
+7.  **Manual QA/Review (Optional):** Manual review or exploratory testing on the staging environment.
+8.  **Approval for Production Deployment:** (Manual or automated gate)
+9.  **Deploy to Production:**
+    -   Deploy the artifact to the production environment.
+    -   Strategies: Blue/Green, Canary, Rolling updates.
+10. **Post-Deployment Verification/Smoke Tests:**
+    -   Run basic tests on production to ensure the core OAuth flow and critical application functionality are working.
+11. **Monitoring & Rollback:** Continuously monitor the application in production. Be prepared to roll back to a previous stable version if issues arise.
+
+## Example CI/CD Workflow (Conceptual GitHub Actions)
+
+This YAML example illustrates a conceptual GitHub Actions workflow.
+
+```yaml
+# .github/workflows/deploy.yml
+name: Build, Test, and Deploy Mubarokah ID Integrated App
+
+on:
+  push:
+    branches: [ main ] # Trigger on push to main
+  pull_request:
+    branches: [ main ] # Trigger on PRs to main
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [18.x] # Or your specific runtime like php-version, python-version
+        # Add database/cache services if needed for tests
+        # services:
+        #   mysql:
+        #     image: mysql:8.0
+        #     env: ...
+        #   redis:
+        #     image: redis:alpine
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js ${{ matrix.node-version }} # Adjust for your runtime
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ matrix.node-version }}
+        cache: 'npm' # Or yarn, composer, pip
+
+    - name: Install Dependencies
+      run: npm ci # Or composer install, pip install -r requirements.txt
+
+    - name: Generate Application Key/Config (if needed for tests)
+      # Example: php artisan key:generate --env=testing
+      # Example: cp .env.example .env.testing
+      run: echo "Simulating config setup for tests"
+
+    # - name: Run Database Migrations (for testing DB)
+    #   env:
+    #     # Test DB credentials
+    #   run: npm run migrate:test # Or equivalent
+
+    - name: Run Unit & Integration Tests
+      # Example: MUBAROKAH_CLIENT_ID_TEST, MUBAROKAH_CLIENT_SECRET_TEST might be needed as secrets for integration tests against a mock
+      # env:
+      #   MOCK_MUBAROKAH_BASE_URL: http://localhost:3002 # Your mock server URL
+      run: npm test # Or phpunit, pytest
+
+    - name: Static Code Analysis & Linting
+      run: npm run lint # Or phpcs, flake8
+
+    # - name: Security Scan (e.g., npm audit)
+    #   run: npm audit --audit-level=high
+
+  # Optional: Build Docker Image
+  # build-docker:
+  #   needs: test
+  #   runs-on: ubuntu-latest
+  #   if: github.event_name == 'push' && github.ref == 'refs/heads/main' # Only for main branch pushes
+  #   steps:
+  #     - name: Checkout code
+  #       uses: actions/checkout@v4
+  #     # ... steps to build and push Docker image to a registry ...
+
+  deploy-staging:
+    needs: test # Or build-docker if using containers
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' # Example: deploy main to staging
+    environment:
+      name: staging
+      url: https://staging.yourapp.com # URL of your staging environment
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      # ... steps to deploy to staging server (e.g., using SSH, SCP, rsync, or specific cloud provider actions) ...
+      # Example:
+      # - name: Deploy to Staging via SSH
+      #   uses: appleboy/ssh-action@master
+      #   with:
+      #     host: ${{ secrets.STAGING_HOST }}
+      #     username: ${{ secrets.STAGING_USERNAME }}
+      #     key: ${{ secrets.STAGING_SSH_KEY }}
+      #     envs: ${{ secrets.STAGING_ENV_VARS }} # Pass MUBAROKAH_CLIENT_ID_STAGING etc.
+      #     script: |
+      #       cd /var/www/staging-app
+      #       git pull
+      #       # npm install --production
+      #       # npm run build
+      #       # pm2 restart app-staging
+      - name: Placeholder for Staging Deployment
+        run: echo "Deploying to Staging environment..."
+
+      # - name: Run E2E Tests on Staging
+      #   run: npm run test:e2e -- --baseUrl ${{ env.STAGING_APP_URL }}
+
+  deploy-production:
+    needs: deploy-staging # Depends on successful staging deployment (and E2E tests if added)
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' # Condition carefully for prod
+    environment:
+      name: production
+      url: https://yourapp.com
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      # ... steps to deploy to production server ...
+      # Similar to staging deployment but with production secrets and server details
+      # Often includes manual approval step in GitHub Actions environments
+      - name: Placeholder for Production Deployment
+        run: echo "Deploying to Production environment..."
+
+      # - name: Post-Deployment Health Check / Smoke Test
+      #   run: curl -f ${{ env.PRODUCTION_APP_URL }}/health
+
+# Example of using GitHub Environments with manual approval for production:
+# environments:
+#   production:
+#     reviewers:
+#       - your-github-username # User or team that can approve
+#     deployment_branch_policy:
+#       protected_branches: true
+#       custom_branches: false
+```
+<Callout type="important" title="Secrets Management in CI/CD">
+  - Use your CI/CD platform's built-in secrets management (e.g., GitHub Actions Secrets, GitLab CI/CD Variables) to store sensitive information like Mubarokah ID client secrets for different environments, SSH keys, and API tokens for deployment.
+  - **Never hardcode secrets directly in your CI/CD configuration files.**
+  - Use environment-specific secrets (e.g., `MUBAROKAH_CLIENT_ID_STAGING`, `MUBAROKAH_CLIENT_ID_PRODUCTION`).
+</Callout>
+
+## Considerations for OAuth in CI/CD
+
+-   **Environment-Specific Redirect URIs:** Ensure your Mubarokah ID client registration allows for `redirect_uri`s for your various environments (localhost for dev, `staging.yourapp.com`, `yourapp.com`).
+-   **Mocking Mubarokah ID:** For automated tests (unit, integration, E2E in staging if direct hitting Mubarokah ID is not feasible), have a reliable way to mock Mubarokah ID's responses. This could be a simple mock server or a more sophisticated service virtualization tool.
+-   **Configuration Management:** Your CI/CD pipeline should manage environment-specific configurations (like Mubarokah ID client IDs/secrets) securely.
+-   **Rollback Strategy:** Have a clear plan and automated capability to roll back to a previous stable version if a deployment introduces issues with the OAuth flow or other critical functionality.
+
+A well-structured CI/CD pipeline significantly improves the quality and reliability of your Mubarokah ID integrated application.

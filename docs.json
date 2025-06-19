@@ -3,14 +3,14 @@
   "name": "Mubarokah ID API",
   "theme": "mint",
   "logo": {
-    "light": "/logo/light.svg",
-    "dark": "/logo/dark.svg"
+    "light": "/logo/mubarokah-id-light.svg",
+    "dark": "/logo/mubarokah-id-dark.svg"
   },
-  "favicon": "/favicon.svg",
+  "favicon": "/favicon-mubarokah-id.ico",
   "colors": {
-    "primary": "#4D46C9",
-    "light": "#7D7AFF",
-    "dark": "#3A3494"
+    "primary": "#0c0f3c",
+    "light": "#22a6f9",
+    "dark": "#566ef8"
   },
   "api": {
     "mdx": {
@@ -26,113 +26,129 @@
       "languages": ["curl", "javascript", "python", "php"]
     }
   },
-  "topbarLinks": [
-    {
-      "name": "Support",
-      "url": "mailto:support@mubarokah.id"
+  "navbar": {
+    "links": [
+      {
+        "label": "Support",
+        "href": "mailto:hey@mubarokah.com"
+      }
+    ],
+    "primary": {
+      "type": "button",
+      "label": "Dashboard",
+      "href": "https://mubarokah.id/dashboard"
     }
-  ],
-  "topbarCtaButton": {
-    "name": "Dashboard",
-    "url": "https://mubarokah.id/dashboard"
   },
-  "anchors": [
-    {
-      "anchor": "Documentation",
-      "icon": "book-open-cover",
-      "href": "https://docs.mubarokah.id"
-    },
-    {
-      "anchor": "Community",
-      "icon": "users",
-      "href": "https://community.mubarokah.id"
-    },
-    {
-      "anchor": "Blog",
-      "icon": "newspaper",
-      "href": "https://blog.mubarokah.id"
-    }
-  ],
-  "navigation": [
-    {
-      "group": "Getting Started",
-      "pages": [
-        "introduction",
-        "quickstart"
-      ]
-    },
-    {
-      "group": "Core Concepts",
-      "pages": [
-        "core-concepts/what-is-mubarokah-id",
-        "core-concepts/architecture-overview",
-        "core-concepts/prerequisites",
-        "core-concepts/scopes-and-permissions"
-      ]
-    },
-    {
-      "group": "Guides",
-      "pages": [
-        "guides/oauth-flow",
+  "navigation": {
+    "global": {
+      "anchors": [
         {
-          "group": "Framework Integration",
-          "pages": [
-            "guides/framework-integration/laravel",
-            "guides/framework-integration/nodejs",
-            "guides/framework-integration/python"
-          ]
+          "anchor": "Documentation",
+          "href": "https://docs.mubarokah.id",
+          "icon": "book-open-cover"
+        },
+        {
+          "anchor": "Community",
+          "href": "https://chat.whatsapp.com/HQtyJMqfqq41KlrHLCvcFZ",
+          "icon": "whatsapp"
+        },
+        {
+          "anchor": "Blog",
+          "href": "https://mubarokah.com/posts",
+          "icon": "newspaper"
         }
       ]
     },
-    {
-      "group": "API Reference",
-      "pages": [
-        {
-          "group": "OAuth Endpoints",
-          "pages": [
-            "api-reference/oauth/authorize",
-            "api-reference/oauth/token"
-          ]
-        },
-        {
-          "group": "User API",
-          "pages": [
-            "api-reference/user/get-user-info",
-            "api-reference/user/get-user-details"
-          ]
-        },
-        "api-reference/error-codes"
-      ]
-    },
-    {
-      "group": "Security",
-      "pages": [
-        "security/oauth-checklist",
-        "security/token-security",
-        "security/input-validation",
-        "security/threat-modeling",
-        "security/penetration-testing"
-      ]
-    },
-    {
-      "group": "Advanced Topics",
-      "pages": [
-        "performance/caching",
-        "performance/connection-optimization",
-        "testing/unit-testing",
-        "testing/load-testing",
-        "production/deployment",
-        "production/ci-cd",
-        "production/health-monitoring",
-        "troubleshooting/error-resolution",
-        "troubleshooting/runbooks",
-        "operations/monitoring-debugging"
-      ]
-    }
-  ],
+    "tabs": [
+      {
+        "tab": "Guides",
+        "groups": [
+          {
+            "group": "Getting Started",
+            "pages": [
+              "introduction",
+              "quickstart"
+            ]
+          },
+          {
+            "group": "Core Concepts",
+            "pages": [
+              "core-concepts/what-is-mubarokah-id",
+              "core-concepts/architecture-overview",
+              "core-concepts/prerequisites",
+              "core-concepts/scopes-and-permissions"
+            ]
+          },
+          {
+            "group": "Integration Guides",
+            "pages": [
+              "guides/oauth-flow",
+              {
+                "group": "Framework Examples",
+                "pages": [
+                  "guides/framework-integration/laravel",
+                  "guides/framework-integration/nodejs",
+                  "guides/framework-integration/python"
+                ]
+              }
+            ]
+          },
+          {
+            "group": "Security",
+            "pages": [
+              "security/oauth-checklist",
+              "security/token-security",
+              "security/input-validation",
+              "security/threat-modeling",
+              "security/penetration-testing"
+            ]
+          },
+          {
+            "group": "Performance & Operations",
+            "pages": [
+              "performance/caching",
+              "performance/connection-optimization",
+              "testing/unit-testing",
+              "testing/load-testing",
+              "production/deployment",
+              "production/ci-cd",
+              "production/health-monitoring",
+              "troubleshooting/error-resolution",
+              "troubleshooting/runbooks",
+              "operations/monitoring-debugging"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
+        "groups": [
+          {
+            "group": "OAuth Endpoints",
+            "pages": [
+              "api-reference/oauth/authorize",
+              "api-reference/oauth/token"
+            ]
+          },
+          {
+            "group": "User API",
+            "pages": [
+              "api-reference/user/get-user-info",
+              "api-reference/user/get-user-details"
+            ]
+          },
+          {
+            "group": "Reference",
+            "pages": [
+                "api-reference/error-codes"
+            ]
+          }
+        ]
+      }
+    ]
+  },
   "footerSocials": {
-    "twitter": "https://twitter.com/mubarokah_id",
-    "github": "https://github.com/mubarokah-id",
-    "linkedin": "https://linkedin.com/company/mubarokah-id"
+    "x": "https://x.com/mubarokah_id/",
+    "linkedin": "https://www.linkedin.com/company/mubarokah/"
   }
 }

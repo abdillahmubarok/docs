@@ -1,0 +1,65 @@
+---
+title: Error Codes
+description: Reference for common OAuth and API error codes returned by Mubarokah ID.
+---
+
+# Error Codes Reference
+
+This section provides a reference for common error codes you might encounter when integrating with Mubarokah ID's OAuth 2.0 and API endpoints. Understanding these errors can help you troubleshoot issues more effectively.
+
+## OAuth Error Codes
+
+These errors are typically returned by the `/oauth/authorize` or `/oauth/token` endpoints. They follow the OAuth 2.0 specification for error responses, usually including an `error` code and an `error_description`.
+
+| Error Code             | Description                                                                                                | Common Resolution Steps                                                                                                                               |
+|------------------------|------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `invalid_request`      | The request is missing a required parameter, includes an unsupported parameter value, or is otherwise malformed. | Double-check all required parameters for the specific endpoint (e.g., `client_id`, `redirect_uri`, `grant_type`, `code`). Ensure correct formatting and spelling. |
+| `invalid_client`       | Client authentication failed (e.g., unknown client, no client authentication included, or unsupported authentication method). This can occur if the `client_id` is invalid or the `client_secret` is incorrect (when used). | Verify your `client_id` and `client_secret`. Ensure you are using the correct method for client authentication (e.g., HTTP Basic Auth or including credentials in the request body for the token endpoint). |
+| `invalid_grant`        | The provided authorization grant (e.g., authorization code, refresh token) or resource owner credentials are invalid, expired, revoked, do not match the redirection URI used in the authorization request, or were issued to another client. | - **Authorization Code:** Ensure the code is not expired (typically short-lived, e.g., 10 mins), has not been used before, and matches the `redirect_uri`. <br/> - **Refresh Token:** Ensure the refresh token is valid and not revoked. If it fails, the user may need to re-authenticate. |
+| `unauthorized_client`  | The client is not authorized to request an authorization code or access token using this method (e.g., the grant type is not permitted for this client). | Check your client registration details with Mubarokah ID to ensure the requested grant type is allowed for your application.                             |
+| `unsupported_grant_type` | The authorization grant type is not supported by the Mubarokah ID authorization server.                        | Ensure you are using a supported grant type like `authorization_code`, `refresh_token`, or `client_credentials`.                                      |
+| `invalid_scope`        | The requested scope is invalid, unknown, malformed, or exceeds the scope granted by the resource owner.          | Verify the spelling of requested scopes. Ensure they are scopes defined by Mubarokah ID. Do not request scopes the user has not consented to or that your client is not permitted to request. |
+| `access_denied`        | The resource owner (user) or authorization server denied the request.                                        | This usually means the user explicitly denied consent on the authorization screen. Your application should handle this gracefully.                          |
+| `server_error`         | The authorization server encountered an unexpected condition that prevented it from fulfilling the request.    | This indicates an issue on Mubarokah ID's side. You may retry the request later. If persistent, contact Mubarokah ID support.                             |
+| `temporarily_unavailable` | The authorization server is currently unable to handle the request due to a temporary overloading or maintenance of the server. | Retry the request after a short delay. Implement exponential backoff for retries.                                                                     |
+
+**Example OAuth Error Response (JSON from `/oauth/token`):**
+```json
+{
+  "error": "invalid_grant",
+  "error_description": "The authorization code has expired or is invalid.",
+  "message": "The authorization code has expired or is invalid.",
+  "hint": "Please attempt the authorization flow again to get a new code."
+}
+```
+
+## API Error Codes (for `/api/user`, `/api/user/details`, etc.)
+
+These errors are returned by Mubarokah ID's resource API endpoints when an authenticated request fails.
+
+| HTTP Status | Error Type (Example)    | Description                                                                                                     |
+|-------------|-------------------------|-----------------------------------------------------------------------------------------------------------------|
+| `400 Bad Request` | `validation_error`      | The request was malformed, e.g., invalid JSON payload, missing required fields for an endpoint that accepts a body. |
+| `401 Unauthorized` | `token_expired`         | The access token provided has expired.                                                                          |
+| `401 Unauthorized` | `token_invalid`         | The access token provided is invalid, malformed, or revoked.                                                    |
+| `401 Unauthorized` | `unauthenticated`       | No access token was provided, or the authentication scheme is incorrect.                                        |
+| `403 Forbidden`    | `insufficient_scope`    | The access token is valid but does not have the necessary scope(s) to access the requested resource or perform the action. |
+| `403 Forbidden`    | `unapproved_scope`      | For specific scopes like `detail-user`, this indicates the client application has not received administrative approval to use this scope, even if the user consented. |
+| `403 Forbidden`    | `permission_denied`     | The authenticated user does not have permission to access the specific resource (beyond scope limitations).       |
+| `404 Not Found`    | `resource_not_found`    | The requested resource (e.g., a specific user if an ID was part of the path and it doesn't exist) could not be found. |
+| `429 Too Many Requests` | `rate_limit_exceeded` | The application or user has sent too many requests in a given amount of time.                                 |
+| `500 Internal Server Error` | `server_error`          | An unexpected error occurred on Mubarokah ID's servers.                                                   |
+| `503 Service Unavailable` | `service_unavailable`   | Mubarokah ID's API is temporarily unavailable, possibly due to maintenance or overload.                       |
+
+**Example API Error Response (JSON):**
+```json
+{
+  "error": "insufficient_scope",
+  "message": "The request requires higher privileges than provided by the access token. Required scope: 'detail-user'.",
+  "status_code": 403
+}
+```
+
+<Callout type="note">
+The specific `error` string or `message` content in API error responses can vary. Always check the HTTP status code first, then inspect the JSON body for more details.
+</Callout>
