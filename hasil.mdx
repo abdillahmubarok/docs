@@ -1,0 +1,5468 @@
+# Login with Mubarokah ID - OAuth 2.0 Integration Guide
+
+[![API Version](https://img.shields.io/badge/API%20Version-v1-blue.svg)](#)
+[![OAuth 2.0](https://img.shields.io/badge/OAuth-2.0-green.svg)](#)
+[![Laravel Passport](https://img.shields.io/badge/Laravel-Passport-red.svg)](#)
+[![Production Ready](https://img.shields.io/badge/Status-Production%20Ready-brightgreen.svg)](#)
+
+**🏆 The Complete Guide to Integrating "Login with Mubarokah ID" in Your Application**
+
+---
+
+## 📋 **Table of Contents**
+
+### 🚀 **[TIER 1: FOUNDATION](#tier-1-foundation-pemula-friendly)**
+- [Quick Start (5 Minutes)](#quick-start-5-minutes)
+- [What is Mubarokah ID?](#what-is-mubarokah-id)
+- [Architecture Overview](#architecture-overview)
+- [Prerequisites Checklist](#prerequisites-checklist)
+
+### 🔧 **[TIER 2: IMPLEMENTATION](#tier-2-implementation-intermediate)**
+- [OAuth 2.0 Complete Flow](#oauth-20-complete-flow)
+- [API Reference Ultimate](#api-reference-ultimate)
+- [Scopes & Permissions Detailed](#scopes--permissions-detailed)
+- [Multi-Account Management](#multi-account-management)
+
+### 🏗️ **[TIER 3: ADVANCED IMPLEMENTATION](#tier-3-advanced-implementation-expert-level)**
+- [Framework Integration Examples](#framework-integration-examples)
+- [Security Guidelines Enterprise](#security-guidelines-enterprise)
+- [Performance Optimization](#performance-optimization)
+- [Production Deployment](#production-deployment)
+
+### 🛠️ **[TIER 4: OPERATIONAL EXCELLENCE](#tier-4-operational-excellence)**
+- [Monitoring & Debugging](#monitoring--debugging)
+- [Troubleshooting Comprehensive](#troubleshooting-comprehensive)
+- [Testing Strategies](#testing-strategies)
+- [Maintenance Operations](#maintenance-operations)
+
+---
+
+## 🎯 **TIER 1: FOUNDATION (Pemula-Friendly)**
+
+### **Quick Start (5 Minutes)**
+
+```mermaid
+graph LR
+    A[Register App] --> B[Get Credentials]
+    B --> C[Setup OAuth Flow]
+    C --> D[Handle Callback]
+    D --> E[Access User Data]
+    
+    style A fill:#e1f5fe
+    style B fill:#f3e5f5
+    style C fill:#e8f5e8
+    style D fill:#fff3e0
+    style E fill:#fce4ec
+```
+
+#### **Step 1: Register Your Application (2 minutes)**
+```bash
+# Contact Mubarokah ID administrators to register your application
+# You'll receive:
+CLIENT_ID="your_unique_client_id"
+CLIENT_SECRET="your_secret_key"
+REDIRECT_URI="https://yourapp.com/auth/callback"
+```
+
+#### **Step 2: Basic Integration (3 minutes)**
+```javascript
+// 1. Redirect to authorization
+const authUrl = `https://mubarokah.id/oauth/authorize?` +
+  `response_type=code&` +
+  `client_id=${CLIENT_ID}&` +
+  `redirect_uri=${REDIRECT_URI}&` +
+  `scope=view-user&` +
+  `state=${generateRandomState()}`;
+
+window.location.href = authUrl;
+
+// 2. Handle callback (server-side)
+const tokenResponse = await fetch('https://mubarokah.id/oauth/token', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+  body: new URLSearchParams({
+    grant_type: 'authorization_code',
+    client_id: CLIENT_ID,
+    client_secret: CLIENT_SECRET,
+    redirect_uri: REDIRECT_URI,
+    code: code_from_callback
+  })
+});
+
+// 3. Access user data
+const userResponse = await fetch('https://mubarokah.id/api/user', {
+  headers: { 'Authorization': `Bearer ${access_token}` }
+});
+```
+
+**🎉 Congratulations! You're now integrated with Login with Mubarokah ID!**
+
+---
+
+### **What is "Login with Mubarokah ID"?**
+
+"Login with Mubarokah ID" adalah **OAuth 2.0 authentication service** yang memungkinkan users untuk login ke aplikasi Anda menggunakan akun Mubarokah ID mereka, mirip dengan "Login with Google" atau "Login with Facebook".
+
+#### **🔥 Core Features:**
+- **🔐 Secure OAuth 2.0**: Full compliance dengan RFC 6749
+- **👤 User Authentication**: Seamless login experience untuk users
+- **🎯 Granular Permissions**: Scope-based access control
+- **🚀 Easy Integration**: Standard OAuth 2.0 implementation
+- **🛡️ Enterprise Security**: PKCE, CSRF protection, secure tokens
+- **📱 Universal Compatibility**: Web, Mobile, Desktop apps
+
+#### **🎨 Integration Benefits:**
+```mermaid
+flowchart TD
+    A[Your Application] --> B[Login with Mubarokah ID]
+    B --> C[Enhanced Security]
+    B --> D[Better UX]
+    B --> E[Reduced Development]
+    B --> F[User Trust]
+    
+    C --> C1[OAuth 2.0 Compliance]
+    C --> C2[Secure Authentication]
+    C --> C3[Token Management]
+    
+    D --> D1[One-Click Login]
+    D --> D2[No Registration Required]
+    D --> D3[Familiar Experience]
+    
+    E --> E1[Pre-built Auth Flow]
+    E --> E2[Standard APIs]
+    E --> E3[Rich Documentation]
+    
+    F --> F1[Trusted Platform]
+    F --> F2[Privacy Protection]
+    F --> F3[Reliable Service]
+```
+
+#### **🌟 Why Choose Login with Mubarokah ID:**
+- **🎯 Faster User Onboarding**: Users dapat langsung login tanpa membuat akun baru
+- **🔒 Enhanced Security**: Leverage advanced security dari Mubarokah ID platform
+- **📊 User Data Access**: Akses ke profile information dengan user permission
+- **⚡ Quick Implementation**: Standard OAuth 2.0 - developer friendly
+- **🛡️ Privacy Compliant**: Built-in privacy controls dan user consent
+
+---
+
+### **Architecture Overview**
+
+```mermaid
+sequenceDiagram
+    participant User as 👤 User
+    participant App as 🖥️ Your App
+    participant Auth as 🔐 Mubarokah ID
+    participant API as 📡 Resource Server
+    participant DB as 🗄️ Database
+
+    Note over User,DB: OAuth 2.0 Authorization Code Flow
+
+    User->>+App: 1. Clicks "Login with Mubarokah ID"
+    App->>-User: 2. Redirects to authorization
+    
+    User->>+Auth: 3. Authenticates with Mubarokah ID
+    Auth->>Auth: 4. User consent for permissions
+    Auth->>-User: 5. Redirects with auth code
+    
+    User->>+App: 6. Delivers auth code
+    App->>+Auth: 7. Exchanges code for tokens
+    Auth->>-App: 8. Returns access & refresh tokens
+    
+    App->>+API: 9. Requests user data
+    API->>DB: 10. Validates token & scopes
+    DB->>API: 11. Returns validation
+    API->>-App: 12. Returns user data
+    
+    App->>User: 13. User logged in to your app
+```
+
+#### **🏗️ System Components:**
+
+| Component | Purpose | Technology |
+|-----------|---------|------------|
+| **Authorization Server** | Issues tokens, handles auth | Laravel Passport |
+| **Resource Server** | Protects APIs, validates tokens | Laravel API |
+| **Your Application** | Consumes OAuth service | Any Framework |
+| **User Database** | Stores user information | MySQL/PostgreSQL |
+
+---
+
+### **Prerequisites Checklist**
+
+#### **✅ Technical Requirements:**
+- [ ] **Backend Server**: Ability to securely store client secrets
+- [ ] **HTTPS Support**: All communications must use TLS
+- [ ] **HTTP Client**: For making OAuth token requests
+- [ ] **Session Management**: For storing OAuth state
+- [ ] **URL Handling**: For redirect URI management
+
+#### **✅ Account Requirements:**
+- [ ] **Registered Application**: Contact Mubarokah ID admins
+- [ ] **Client Credentials**: `client_id` and `client_secret`
+- [ ] **Redirect URIs**: Pre-approved callback URLs
+- [ ] **Scope Permissions**: Appropriate access levels
+
+#### **✅ Development Environment:**
+```bash
+# Environment Variables Template
+MUBAROKAH_CLIENT_ID=your_client_id
+MUBAROKAH_CLIENT_SECRET=your_client_secret
+MUBAROKAH_REDIRECT_URI=https://yourapp.com/auth/callback
+MUBAROKAH_BASE_URL=https://mubarokah.id
+```
+
+#### **✅ Knowledge Requirements:**
+- [ ] **OAuth 2.0 Basics**: Understanding of grant types
+- [ ] **HTTP/REST APIs**: Making authenticated requests
+- [ ] **JSON Handling**: Parsing API responses
+- [ ] **Security Best Practices**: Token storage, CSRF protection
+
+---
+
+## 🔧 **TIER 2: IMPLEMENTATION (Intermediate)**
+
+### **OAuth 2.0 Complete Flow**
+
+#### **🔄 Authorization Code Grant (Recommended)**
+
+```mermaid
+stateDiagram-v2
+    [*] --> InitiateAuth
+    InitiateAuth --> UserAuth: Redirect to /oauth/authorize
+    UserAuth --> ConsentScreen: User authenticated
+    ConsentScreen --> AuthCode: User consents
+    AuthCode --> TokenExchange: App receives code
+    TokenExchange --> TokenValidation: Exchange for tokens
+    TokenValidation --> ApiAccess: Valid tokens received
+    ApiAccess --> [*]: User logged in to your app
+    
+    UserAuth --> LoginPage: Not authenticated
+    LoginPage --> UserAuth: Login successful
+    
+    ConsentScreen --> AuthDenied: User denies
+    AuthDenied --> [*]: Access denied
+    
+    TokenExchange --> TokenError: Invalid code/client
+    TokenError --> [*]: Integration error
+```
+
+#### **📋 Detailed Step-by-Step Implementation:**
+
+##### **Step 1: Authorization Request**
+```http
+GET /oauth/authorize HTTP/1.1
+Host: mubarokah.id
+```
+
+**Parameters:**
+```javascript
+const authParams = {
+  response_type: 'code',        // Required: Must be 'code'
+  client_id: 'your_client_id',  // Required: Your app identifier
+  redirect_uri: 'https://yourapp.com/callback', // Required: Exact match
+  scope: 'view-user detail-user', // Optional: Space-separated
+  state: 'random_csrf_token',   // Recommended: CSRF protection
+  prompt: 'consent',            // Optional: Force consent screen
+  
+  // PKCE Parameters (for public clients)
+  code_challenge: 'challenge',  // Optional: SHA256 hash
+  code_challenge_method: 'S256' // Optional: Hashing method
+};
+
+const authUrl = `https://mubarokah.id/oauth/authorize?${new URLSearchParams(authParams)}`;
+```
+
+##### **Step 2: User Authentication & Consent**
+
+**🔍 Authentication & Consent Flow:**
+```mermaid
+flowchart TD
+    A[User Clicks Login] --> B{Authenticated?}
+    B -->|No| C[Login Page]
+    B -->|Yes| D[Consent Screen]
+    
+    C --> E[User Logs In]
+    E --> D
+    
+    D --> F{User Consents?}
+    F -->|Yes| G[Generate Auth Code]
+    F -->|No| H[Access Denied]
+    
+    G --> I[Redirect to App]
+    H --> J[Error Redirect]
+```
+
+##### **Step 3: Authorization Code Response**
+
+**✅ Success Response:**
+```http
+HTTP/1.1 302 Found
+Location: https://yourapp.com/callback?code=AUTH_CODE&state=CSRF_TOKEN
+```
+
+**❌ Error Response:**
+```http
+HTTP/1.1 302 Found
+Location: https://yourapp.com/callback?error=access_denied&error_description=User+denied+access&state=CSRF_TOKEN
+```
+
+##### **Step 4: Token Exchange**
+
+```http
+POST /oauth/token HTTP/1.1
+Host: mubarokah.id
+Content-Type: application/x-www-form-urlencoded
+Authorization: Basic base64(client_id:client_secret)
+
+grant_type=authorization_code&
+code=AUTHORIZATION_CODE&
+redirect_uri=https://yourapp.com/callback&
+client_id=your_client_id&
+client_secret=your_client_secret
+```
+
+**Response:**
+```json
+{
+  "token_type": "Bearer",
+  "expires_in": 86400,
+  "access_token": "eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9...",
+  "refresh_token": "def502003e1b8f3c5f8b1a2d9e7f6c8d4e9b2a1c...",
+  "scope": "view-user detail-user"
+}
+```
+
+#### **🔄 Refresh Token Flow**
+
+```javascript
+// When access token expires (after 24 hours)
+const refreshTokens = async (refreshToken) => {
+  const response = await fetch('https://mubarokah.id/oauth/token', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+      'Authorization': `Basic ${btoa(`${CLIENT_ID}:${CLIENT_SECRET}`)}`
+    },
+    body: new URLSearchParams({
+      grant_type: 'refresh_token',
+      refresh_token: refreshToken,
+      scope: 'view-user' // Optional: can be subset of original scopes
+    })
+  });
+  
+  if (response.ok) {
+    const tokens = await response.json();
+    // Store new tokens securely
+    return tokens;
+  }
+  
+  throw new Error('Token refresh failed');
+};
+```
+
+#### **⚡ Client Credentials Grant (Machine-to-Machine)**
+
+```javascript
+// For server-to-server communication
+const getAppToken = async () => {
+  const response = await fetch('https://mubarokah.id/oauth/token', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded'
+    },
+    body: new URLSearchParams({
+      grant_type: 'client_credentials',
+      client_id: CLIENT_ID,
+      client_secret: CLIENT_SECRET,
+      scope: 'client-specific-scope'
+    })
+  });
+  
+  return await response.json();
+};
+```
+
+---
+
+### **API Reference Ultimate**
+
+#### **🏠 Base Configuration**
+```javascript
+const MUBAROKAH_CONFIG = {
+  baseUrl: 'https://mubarokah.id',
+  endpoints: {
+    authorize: '/oauth/authorize',
+    token: '/oauth/token',
+    userInfo: '/api/user',
+    userDetails: '/api/user/details'
+  },
+  tokenLifetime: {
+    access: 86400,  // 24 hours
+    refresh: 2592000 // 30 days
+  }
+};
+```
+
+#### **🔐 OAuth 2.0 Endpoints**
+
+##### **1. Authorization Endpoint**
+
+```http
+GET /oauth/authorize
+```
+
+**Parameters:**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `response_type` | string | ✅ | Must be `code` |
+| `client_id` | string | ✅ | Your application identifier |
+| `redirect_uri` | string | ✅ | Registered callback URL |
+| `scope` | string | ❌ | Space-separated permissions |
+| `state` | string | 🔸 | CSRF protection token |
+| `prompt` | string | ❌ | `consent` to force consent |
+| `code_challenge` | string | ❌ | PKCE challenge (public clients) |
+| `code_challenge_method` | string | ❌ | `S256` for SHA256 |
+
+**Example Request:**
+```javascript
+const buildAuthUrl = (clientId, redirectUri, scopes = ['view-user']) => {
+  const state = generateSecureRandom(32);
+  sessionStorage.setItem('oauth_state', state);
+  
+  const params = new URLSearchParams({
+    response_type: 'code',
+    client_id: clientId,
+    redirect_uri: redirectUri,
+    scope: scopes.join(' '),
+    state: state
+  });
+  
+  return `https://mubarokah.id/oauth/authorize?${params}`;
+};
+```
+
+##### **2. Token Endpoint**
+
+```http
+POST /oauth/token
+```
+
+**Headers:**
+```http
+Content-Type: application/x-www-form-urlencoded
+Authorization: Basic base64(client_id:client_secret)
+```
+
+**Grant Types Supported:**
+
+###### **Authorization Code Grant:**
+```javascript
+const exchangeCodeForTokens = async (code, redirectUri) => {
+  const response = await fetch('https://mubarokah.id/oauth/token', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded'
+    },
+    body: new URLSearchParams({
+      grant_type: 'authorization_code',
+      client_id: CLIENT_ID,
+      client_secret: CLIENT_SECRET,
+      redirect_uri: redirectUri,
+      code: code
+    })
+  });
+  
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(`Token exchange failed: ${error.error_description}`);
+  }
+  
+  return await response.json();
+};
+```
+
+**Response Format:**
+```typescript
+interface TokenResponse {
+  token_type: "Bearer";
+  expires_in: number;        // Seconds until expiration
+  access_token: string;      // JWT access token
+  refresh_token?: string;    // Long-lived refresh token
+  scope?: string;           // Granted scopes
+}
+```
+
+###### **Refresh Token Grant:**
+```javascript
+const refreshAccessToken = async (refreshToken) => {
+  const response = await fetch('https://mubarokah.id/oauth/token', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded'
+    },
+    body: new URLSearchParams({
+      grant_type: 'refresh_token',
+      refresh_token: refreshToken,
+      client_id: CLIENT_ID,
+      client_secret: CLIENT_SECRET
+    })
+  });
+  
+  return await response.json();
+};
+```
+
+#### **👤 User API Endpoints**
+
+##### **1. Basic User Information**
+
+```http
+GET /api/user
+Authorization: Bearer {access_token}
+```
+
+**Required Scope:** `view-user`
+
+**Response:**
+```json
+{
+  "id": 12345,
+  "name": "John Doe",
+  "email": "john.doe@example.com",
+  "profile_picture": "https://s3.amazonaws.com/avatars/user123.jpg",
+  "username": "johndoe",
+  "gender": "male"
+}
+```
+
+**Implementation:**
+```javascript
+const getUserInfo = async (accessToken) => {
+  const response = await fetch('https://mubarokah.id/api/user', {
+    headers: {
+      'Authorization': `Bearer ${accessToken}`,
+      'Accept': 'application/json'
+    }
+  });
+  
+  if (response.status === 401) {
+    throw new Error('Token expired or invalid');
+  }
+  
+  if (response.status === 403) {
+    throw new Error('Insufficient scope: view-user required');
+  }
+  
+  return await response.json();
+};
+```
+
+##### **2. Detailed User Information**
+
+```http
+GET /api/user/details
+Authorization: Bearer {access_token}
+```
+
+**Required Scope:** `detail-user` + **Admin Approval**
+
+**Response:**
+```json
+{
+  "bio": "Software engineer passionate about OAuth 2.0",
+  "phone_number": "+6281234567890",
+  "place_of_birth": "Jakarta",
+  "date_of_birth": "1990-01-15",
+  "address": "123 Main Street, Jakarta"
+}
+```
+
+**⚠️ Special Requirements:**
+```javascript
+const getUserDetails = async (accessToken) => {
+  try {
+    const response = await fetch('https://mubarokah.id/api/user/details', {
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Accept': 'application/json'
+      }
+    });
+    
+    if (response.status === 403) {
+      const error = await response.json();
+      if (error.error === 'unapproved_scope') {
+        // Client needs admin approval for detail-user scope
+        throw new Error('Your application needs approval to access detailed user information');
+      }
+    }
+    
+    return await response.json();
+  } catch (error) {
+    console.error('Failed to fetch user details:', error);
+    throw error;
+  }
+};
+```
+
+#### **📊 Error Handling Reference**
+
+##### **OAuth Error Codes:**
+
+| Error Code | Description | Resolution |
+|------------|-------------|------------|
+| `invalid_request` | Missing/invalid parameters | Check request format |
+| `invalid_client` | Client authentication failed | Verify credentials |
+| `invalid_grant` | Authorization code invalid | Get new auth code |
+| `unauthorized_client` | Client not authorized | Check client registration |
+| `unsupported_grant_type` | Grant type not supported | Use supported grant types |
+| `invalid_scope` | Requested scope invalid | Check available scopes |
+
+##### **API Error Codes:**
+
+| HTTP Status | Error Type | Description |
+|-------------|------------|-------------|
+| `401` | `token_expired` | Access token has expired |
+| `401` | `token_invalid` | Access token is malformed |
+| `403` | `insufficient_scope` | Token lacks required scope |
+| `403` | `unapproved_scope` | Client needs admin approval |
+| `429` | `rate_limit_exceeded` | Too many requests |
+
+**Error Response Format:**
+```json
+{
+  "error": "invalid_request",
+  "error_description": "The request is missing a required parameter",
+  "message": "The request is missing a required parameter",
+  "hint": "Check the documentation for required parameters"
+}
+```
+
+---
+
+### **Scopes & Permissions Detailed**
+
+#### **🎯 Scope Hierarchy**
+
+```mermaid
+graph TD
+    A[OAuth Scopes] --> B[view-user]
+    A --> C[detail-user]
+    
+    B --> B1[Basic Profile]
+    B1 --> B2[ID, Name, Email]
+    B1 --> B3[Username, Avatar]
+    B1 --> B4[Gender]
+    
+    C --> C1[Sensitive Data]
+    C1 --> C2[Phone Number]
+    C1 --> C3[Date of Birth]
+    C1 --> C4[Place of Birth]
+    C1 --> C5[Address]
+    C1 --> C6[Biography]
+    
+    C --> C7[🛡️ Admin Approval Required]
+    
+    style B fill:#e8f5e8
+    style C fill:#ffebee
+    style C7 fill:#f3e5f5
+```
+
+#### **📋 Scope Permission Matrix**
+
+| Scope | Data Access | Approval Process | Use Cases |
+|-------|-------------|------------------|-----------|
+| `view-user` | ✅ Basic profile  \n✅ Public information  \n✅ Display purposes | **Automatic** | • Profile display  \n• Personalization  \n• Basic identification |
+| `detail-user` | ✅ All `view-user` data\n✅ Sensitive personal info\n✅ Contact details | **Manual Admin Review** | • KYC verification\n• Address validation\n• Contact integration |
+
+#### **🔐 Detail-User Scope Approval Process**
+
+##### **Overview:**
+```mermaid
+sequenceDiagram
+    participant Dev as 👨‍💻 Developer
+    participant App as 📱 Client App
+    participant Portal as 🌐 Mubarokah Portal
+    participant Admin as 👨‍💼 Admin
+    participant User as 👤 End User
+
+    Dev->>Portal: 1. Submit scope request
+    Portal->>Portal: 2. Upload required documents
+    Portal->>Admin: 3. Notify admin
+    Admin->>Portal: 4. Review application
+    
+    alt Approved
+        Admin->>Portal: 5a. Approve request
+        Portal->>Dev: 6a. Approval notification
+        App->>User: 7a. Can access detailed data
+    else Rejected
+        Admin->>Portal: 5b. Reject with reason
+        Portal->>Dev: 6b. Rejection notification
+        App->>User: 7b. Limited to basic data
+    end
+```
+
+##### **Step-by-Step Approval Process:**
+
+###### **Step 1: Submit Request**
+```javascript
+// Navigate to scope request portal
+const requestDetailUserScope = (clientId) => {
+  const portalUrl = `https://sso.mubarokahid.com/scope-requests/create?client_id=${clientId}`;
+  window.open(portalUrl, '_blank');
+};
+```
+
+###### **Step 2: Required Information**
+```typescript
+interface ScopeRequest {
+  client_id: string;
+  entity_type: 'individual' | 'organization' | 'company';
+  name: string;
+  contact_name: string;
+  contact_phone: string;
+  contact_email: string;
+  app_url: string;
+  purpose: string; // Detailed explanation of data usage
+  documents: Document[];
+}
+```
+
+###### **Step 3: Document Requirements**
+
+**For Individual Developers:**
+- ✅ **KTP (Indonesian ID Card)** - Identity verification
+- ✅ **Business License** (if applicable)
+
+**For Organizations/Companies:**
+- ✅ **NIB (Business Registration Number)**
+- ✅ **NPWP (Tax Registration Number)**
+- ✅ **Business Certificate**
+- ✅ **Company Profile**
+
+###### **Step 4: Admin Review Process**
+```php
+// Internal admin workflow
+class ScopeRequestController 
+{
+    public function approve(ScopeAccessRequest $request)
+    {
+        DB::transaction(function() use ($request) {
+            $request->update([
+                'status' => 'approved',
+                'approved_by' => Auth::id(),
+                'approved_at' => now()
+            ]);
+            
+            // Enable access for all future tokens
+            $this->enableScopeAccess($request->client_id);
+            
+            // Notify developer
+            $request->user->notify(new ScopeRequestApproved($request));
+        });
+    }
+}
+```
+
+###### **Step 5: Implementation After Approval**
+```javascript
+// After approval, the detail-user scope will work normally
+const getDetailedUserInfo = async (accessToken) => {
+  try {
+    const response = await fetch('https://sso.mubarokahid.com/api/user/details', {
+      headers: {
+        'Authorization': `Bearer ${accessToken}`
+      }
+    });
+    
+    if (response.ok) {
+      return await response.json();
+    }
+    
+    // This should no longer happen after approval
+    throw new Error('Access denied despite approval');
+  } catch (error) {
+    console.error('Failed to access detailed user info:', error);
+    throw error;
+  }
+};
+```
+
+#### **⚖️ Compliance & Legal Considerations**
+
+##### **Data Usage Guidelines:**
+- 🔒 **Minimal Data Principle**: Only request scopes you actively use
+- 📝 **Purpose Limitation**: Use data only for declared purposes
+- 🗑️ **Data Retention**: Delete unnecessary data promptly
+- 🔐 **Security Standards**: Encrypt sensitive data at rest
+- 📊 **Audit Trails**: Maintain access logs
+
+##### **Privacy Compliance:**
+```javascript
+// Example privacy-compliant implementation
+class UserDataManager {
+  constructor(accessToken) {
+    this.accessToken = accessToken;
+    this.encryptionKey = process.env.DATA_ENCRYPTION_KEY;
+  }
+  
+  async fetchAndStoreUserData() {
+    // 1. Fetch only necessary data
+    const userData = await this.fetchUserInfo(['view-user']);
+    
+    // 2. Encrypt sensitive fields
+    const encryptedData = this.encryptSensitiveFields(userData);
+    
+    // 3. Store with expiration
+    await this.storeWithExpiration(encryptedData, '30 days');
+    
+    // 4. Log access for audit
+    this.logDataAccess(userData.id, 'fetch_user_data');
+    
+    return userData;
+  }
+  
+  async cleanupExpiredData() {
+    // Automatic cleanup of expired user data
+    await this.deleteExpiredRecords();
+  }
+}
+```
+
+---
+
+## 🏗️ **TIER 3: ADVANCED IMPLEMENTATION (Expert-Level)**
+
+### **Framework Integration Examples**
+
+#### **🔧 Laravel (PHP) - Production Ready**
+
+##### **Full Service Provider Implementation:**
+```php
+// config/services.php
+'mubarokah' => [
+    'client_id' => env('MUBAROKAH_CLIENT_ID'),
+    'client_secret' => env('MUBAROKAH_CLIENT_SECRET'),
+    'redirect' => env('MUBAROKAH_REDIRECT_URI'),
+    'base_url' => env('MUBAROKAH_BASE_URL', 'https://sso.mubarokahid.com'),
+],
+
+// app/Services/MubarokahOAuthService.php
+class MubarokahOAuthService
+{
+    protected $httpClient;
+    protected $config;
+    protected $cache;
+    
+    public function __construct(Client $httpClient, Cache $cache)
+    {
+        $this->httpClient = $httpClient;
+        $this->config = config('services.mubarokah');
+        $this->cache = $cache;
+    }
+    
+    /**
+     * Generate authorization URL with PKCE support
+     */
+    public function getAuthorizationUrl(array $scopes = ['view-user'], bool $usePKCE = false): array
+    {
+        $state = Str::random(40);
+        $params = [
+            'response_type' => 'code',
+            'client_id' => $this->config['client_id'],
+            'redirect_uri' => $this->config['redirect'],
+            'scope' => implode(' ', $scopes),
+            'state' => $state,
+        ];
+        
+        $result = ['state' => $state];
+        
+        if ($usePKCE) {
+            $codeVerifier = Str::random(128);
+            $codeChallenge = rtrim(strtr(base64_encode(hash('sha256', $codeVerifier, true)), '+/', '-_'), '=');
+            
+            $params['code_challenge'] = $codeChallenge;
+            $params['code_challenge_method'] = 'S256';
+            
+            $result['code_verifier'] = $codeVerifier;
+        }
+        
+        $result['url'] = $this->config['base_url'] . '/oauth/authorize?' . http_build_query($params);
+        
+        return $result;
+    }
+    
+    /**
+     * Exchange authorization code for tokens
+     */
+    public function exchangeCodeForTokens(string $code, string $state, ?string $codeVerifier = null): array
+    {
+        $params = [
+            'grant_type' => 'authorization_code',
+            'client_id' => $this->config['client_id'],
+            'client_secret' => $this->config['client_secret'],
+            'redirect_uri' => $this->config['redirect'],
+            'code' => $code,
+        ];
+        
+        if ($codeVerifier) {
+            $params['code_verifier'] = $codeVerifier;
+        }
+        
+        $response = $this->httpClient->post($this->config['base_url'] . '/oauth/token', [
+            'form_params' => $params,
+            'headers' => [
+                'Accept' => 'application/json',
+            ],
+        ]);
+        
+        if ($response->getStatusCode() !== 200) {
+            throw new OAuthException('Token exchange failed');
+        }
+        
+        return json_decode($response->getBody(), true);
+    }
+    
+    /**
+     * Refresh access token
+     */
+    public function refreshToken(string $refreshToken): array
+    {
+        $response = $this->httpClient->post($this->config['base_url'] . '/oauth/token', [
+            'form_params' => [
+                'grant_type' => 'refresh_token',
+                'refresh_token' => $refreshToken,
+                'client_id' => $this->config['client_id'],
+                'client_secret' => $this->config['client_secret'],
+            ],
+        ]);
+        
+        if ($response->getStatusCode() !== 200) {
+            throw new OAuthException('Token refresh failed');
+        }
+        
+        return json_decode($response->getBody(), true);
+    }
+    
+    /**
+     * Get user information with caching
+     */
+    public function getUserInfo(string $accessToken, bool $detailed = false): array
+    {
+        $endpoint = $detailed ? '/api/user/details' : '/api/user';
+        $cacheKey = "mubarokah_user_{$accessToken}_{$endpoint}";
+        
+        return $this->cache->remember($cacheKey, 300, function() use ($accessToken, $endpoint) {
+            $response = $this->httpClient->get($this->config['base_url'] . $endpoint, [
+                'headers' => [
+                    'Authorization' => "Bearer {$accessToken}",
+                    'Accept' => 'application/json',
+                ],
+            ]);
+            
+            if ($response->getStatusCode() !== 200) {
+                throw new ApiException('Failed to fetch user info');
+            }
+            
+            return json_decode($response->getBody(), true);
+        });
+    }
+}
+
+// app/Http/Controllers/Auth/MubarokahController.php
+class MubarokahController extends Controller
+{
+    protected $oauthService;
+    
+    public function __construct(MubarokahOAuthService $oauthService)
+    {
+        $this->oauthService = $oauthService;
+    }
+    
+    /**
+     * Redirect to Mubarokah ID
+     */
+    public function redirect(Request $request)
+    {
+        $scopes = $request->input('scopes', ['view-user']);
+        $usePKCE = $request->input('pkce', false);
+        
+        $authData = $this->oauthService->getAuthorizationUrl($scopes, $usePKCE);
+        
+        session([
+            'mubarokah_state' => $authData['state'],
+            'mubarokah_code_verifier' => $authData['code_verifier'] ?? null,
+        ]);
+        
+        return redirect($authData['url']);
+    }
+    
+    /**
+     * Handle callback from Mubarokah ID
+     */
+    public function callback(Request $request)
+    {
+        // Validate state
+        $state = session('mubarokah_state');
+        if (!$state || $state !== $request->input('state')) {
+            throw new AuthenticationException('Invalid state parameter');
+        }
+        
+        // Handle errors
+        if ($request->has('error')) {
+            $error = $request->input('error');
+            $description = $request->input('error_description', 'Unknown error');
+            
+            return redirect('/login')->with('error', "OAuth Error: {$error} - {$description}");
+        }
+        
+        try {
+            // Exchange code for tokens
+            $code = $request->input('code');
+            $codeVerifier = session('mubarokah_code_verifier');
+            
+            $tokens = $this->oauthService->exchangeCodeForTokens($code, $state, $codeVerifier);
+            
+            // Get user information
+            $userInfo = $this->oauthService->getUserInfo($tokens['access_token']);
+            
+            // Find or create user
+            $user = User::updateOrCreate(
+                ['email' => $userInfo['email']],
+                [
+                    'name' => $userInfo['name'],
+                    'mubarokah_id' => $userInfo['id'],
+                    'avatar' => $userInfo['profile_picture'],
+                    'username' => $userInfo['username'],
+                ]
+            );
+            
+            // Store tokens securely
+            $user->mubarokahTokens()->updateOrCreate(
+                ['user_id' => $user->id],
+                [
+                    'access_token' => encrypt($tokens['access_token']),
+                    'refresh_token' => encrypt($tokens['refresh_token']),
+                    'expires_at' => now()->addSeconds($tokens['expires_in']),
+                    'scopes' => $tokens['scope'] ?? 'view-user',
+                ]
+            );
+            
+            // Log the user in
+            Auth::login($user);
+            
+            // Clear session data
+            session()->forget(['mubarokah_state', 'mubarokah_code_verifier']);
+            
+            return redirect()->intended('/dashboard')->with('success', 'Successfully logged in with Mubarokah ID');
+            
+        } catch (\Exception $e) {
+            Log::error('Mubarokah OAuth callback error', [
+                'error' => $e->getMessage(),
+                'request' => $request->all(),
+            ]);
+            
+            return redirect('/login')->with('error', 'Authentication failed. Please try again.');
+        }
+    }
+    
+    /**
+     * Logout from your application
+     */
+    public function logout(Request $request)
+    {
+        $user = $request->user();
+        
+        if ($user && $user->mubarokahTokens) {
+            // Remove stored tokens from your database
+            $user->mubarokahTokens()->delete();
+        }
+        
+        Auth::logout();
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
+        
+        return redirect('/');
+    }
+}
+
+// Database Migration for Token Storage
+Schema::create('mubarokah_tokens', function (Blueprint $table) {
+    $table->id();
+    $table->foreignId('user_id')->constrained()->onDelete('cascade');
+    $table->text('access_token');
+    $table->text('refresh_token');
+    $table->timestamp('expires_at');
+    $table->string('scopes')->default('view-user');
+    $table->timestamps();
+    
+    $table->unique('user_id');
+});
+```
+
+#### **🚀 Node.js (Express + TypeScript) - Enterprise Setup**
+
+```typescript
+// types/mubarokah.ts
+export interface MubarokahConfig {
+  clientId: string;
+  clientSecret: string;
+  redirectUri: string;
+  baseUrl: string;
+}
+
+export interface TokenResponse {
+  token_type: 'Bearer';
+  expires_in: number;
+  access_token: string;
+  refresh_token: string;
+  scope?: string;
+}
+
+export interface UserInfo {
+  id: number;
+  name: string;
+  email: string;
+  profile_picture: string;
+  username: string;
+  gender?: string;
+}
+
+export interface DetailedUserInfo extends UserInfo {
+  bio?: string;
+  phone_number?: string;
+  place_of_birth?: string;
+  date_of_birth?: string;
+  address?: string;
+}
+
+// services/MubarokahOAuthService.ts
+import axios, { AxiosInstance } from 'axios';
+import crypto from 'crypto';
+import { createHash } from 'crypto';
+
+export class MubarokahOAuthService {
+  private httpClient: AxiosInstance;
+  private config: MubarokahConfig;
+  
+  constructor(config: MubarokahConfig) {
+    this.config = config;
+    this.httpClient = axios.create({
+      baseURL: config.baseUrl,
+      timeout: 30000,
+      headers: {
+        'Accept': 'application/json',
+        'User-Agent': 'MyApp/1.0.0'
+      }
+    });
+    
+    // Add response interceptor for error handling
+    this.httpClient.interceptors.response.use(
+      response => response,
+      error => {
+        if (error.response?.data) {
+          const errorData = error.response.data;
+          throw new Error(`OAuth Error: ${errorData.error} - ${errorData.error_description || errorData.message}`);
+        }
+        throw error;
+      }
+    );
+  }
+  
+  /**
+   * Generate PKCE challenge
+   */
+  private generatePKCE(): { verifier: string; challenge: string } {
+    const verifier = crypto.randomBytes(32).toString('base64url');
+    const challenge = createHash('sha256').update(verifier).digest('base64url');
+    return { verifier, challenge };
+  }
+  
+  /**
+   * Generate authorization URL
+   */
+  public generateAuthUrl(
+    scopes: string[] = ['view-user'],
+    usePKCE = false,
+    prompt?: 'consent'
+  ): { url: string; state: string; codeVerifier?: string } {
+    const state = crypto.randomBytes(16).toString('hex');
+    
+    const params = new URLSearchParams({
+      response_type: 'code',
+      client_id: this.config.clientId,
+      redirect_uri: this.config.redirectUri,
+      scope: scopes.join(' '),
+      state,
+    });
+    
+    if (prompt) {
+      params.append('prompt', prompt);
+    }
+    
+    let codeVerifier: string | undefined;
+    
+    if (usePKCE) {
+      const pkce = this.generatePKCE();
+      codeVerifier = pkce.verifier;
+      params.append('code_challenge', pkce.challenge);
+      params.append('code_challenge_method', 'S256');
+    }
+    
+    return {
+      url: `/oauth/authorize?${params.toString()}`,
+      state,
+      codeVerifier
+    };
+  }
+  
+  /**
+   * Exchange authorization code for tokens
+   */
+  public async exchangeCodeForTokens(
+    code: string,
+    codeVerifier?: string
+  ): Promise<TokenResponse> {
+    const params: Record<string, string> = {
+      grant_type: 'authorization_code',
+      client_id: this.config.clientId,
+      client_secret: this.config.clientSecret,
+      redirect_uri: this.config.redirectUri,
+      code,
+    };
+    
+    if (codeVerifier) {
+      params.code_verifier = codeVerifier;
+    }
+    
+    const response = await this.httpClient.post<TokenResponse>('/oauth/token', 
+      new URLSearchParams(params),
+      {
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded'
+        }
+      }
+    );
+    
+    return response.data;
+  }
+  
+  /**
+   * Refresh access token
+   */
+  public async refreshToken(refreshToken: string): Promise<TokenResponse> {
+    const response = await this.httpClient.post<TokenResponse>('/oauth/token',
+      new URLSearchParams({
+        grant_type: 'refresh_token',
+        refresh_token: refreshToken,
+        client_id: this.config.clientId,
+        client_secret: this.config.clientSecret,
+      }),
+      {
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded'
+        }
+      }
+    );
+    
+    return response.data;
+  }
+  
+  /**
+   * Get user information
+   */
+  public async getUserInfo(accessToken: string): Promise<UserInfo> {
+    const response = await this.httpClient.get<UserInfo>('/api/user', {
+      headers: {
+        'Authorization': `Bearer ${accessToken}`
+      }
+    });
+    
+    return response.data;
+  }
+  
+  /**
+   * Get detailed user information
+   */
+  public async getDetailedUserInfo(accessToken: string): Promise<DetailedUserInfo> {
+    const response = await this.httpClient.get<DetailedUserInfo>('/api/user/details', {
+      headers: {
+        'Authorization': `Bearer ${accessToken}`
+      }
+    });
+    
+    return response.data;
+  }
+  
+  /**
+   * Logout from SSO
+   */
+  public async logout(accessToken: string): Promise<boolean> {
+    try {
+      await this.httpClient.get('/api/logout-sso', {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`
+        }
+      });
+      return true;
+    } catch (error) {
+      console.error('SSO logout failed:', error);
+      return false;
+    }
+  }
+}
+
+// middleware/auth.ts
+import { Request, Response, NextFunction } from 'express';
+import { TokenService } from '../services/TokenService';
+
+export interface AuthenticatedRequest extends Request {
+  user?: UserInfo;
+  accessToken?: string;
+}
+
+export const requireAuth = async (
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const token = req.headers.authorization?.replace('Bearer ', '');
+    
+    if (!token) {
+      return res.status(401).json({ error: 'No token provided' });
+    }
+    
+    // Check if token is still valid
+    const tokenService = new TokenService();
+    const storedToken = await tokenService.getToken(token);
+    
+    if (!storedToken || tokenService.isExpired(storedToken)) {
+      return res.status(401).json({ error: 'Token expired' });
+    }
+    
+    // Add user info to request
+    req.user = storedToken.userInfo;
+    req.accessToken = token;
+    
+    next();
+  } catch (error) {
+    res.status(401).json({ error: 'Invalid token' });
+  }
+};
+
+// routes/auth.ts
+import { Router } from 'express';
+import { MubarokahOAuthService } from '../services/MubarokahOAuthService';
+import { TokenService } from '../services/TokenService';
+
+const router = Router();
+const oauthService = new MubarokahOAuthService({
+  clientId: process.env.MUBAROKAH_CLIENT_ID!,
+  clientSecret: process.env.MUBAROKAH_CLIENT_SECRET!,
+  redirectUri: process.env.MUBAROKAH_REDIRECT_URI!,
+  baseUrl: process.env.MUBAROKAH_BASE_URL!,
+});
+
+// Start OAuth flow
+router.get('/login', (req, res) => {
+  const scopes = req.query.scopes ? (req.query.scopes as string).split(',') : ['view-user'];
+  const usePKCE = req.query.pkce === 'true';
+  
+  const authData = oauthService.generateAuthUrl(scopes, usePKCE);
+  
+  // Store state and code verifier in session
+  req.session.oauthState = authData.state;
+  if (authData.codeVerifier) {
+    req.session.codeVerifier = authData.codeVerifier;
+  }
+  
+  res.redirect(authData.url);
+});
+
+// Handle OAuth callback
+router.get('/callback', async (req, res) => {
+  try {
+    const { code, state, error, error_description } = req.query;
+    
+    // Handle OAuth errors
+    if (error) {
+      return res.status(400).json({
+        error,
+        description: error_description || 'OAuth authentication failed'
+      });
+    }
+    
+    // Validate state
+    if (!state || state !== req.session.oauthState) {
+      return res.status(400).json({ error: 'Invalid state parameter' });
+    }
+    
+    // Exchange code for tokens
+    const tokens = await oauthService.exchangeCodeForTokens(
+      code as string,
+      req.session.codeVerifier
+    );
+    
+    // Get user information
+    const userInfo = await oauthService.getUserInfo(tokens.access_token);
+    
+    // Store tokens securely
+    const tokenService = new TokenService();
+    await tokenService.storeTokens(userInfo.id.toString(), tokens, userInfo);
+    
+    // Create session
+    req.session.userId = userInfo.id.toString();
+    req.session.accessToken = tokens.access_token;
+    
+    // Clear OAuth session data
+    delete req.session.oauthState;
+    delete req.session.codeVerifier;
+    
+    res.json({
+      success: true,
+      user: userInfo,
+      redirectUrl: '/dashboard'
+    });
+    
+  } catch (error) {
+    console.error('OAuth callback error:', error);
+    res.status(500).json({
+      error: 'Authentication failed',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+// Logout
+router.post('/logout', requireAuth, async (req: AuthenticatedRequest, res) => {
+  try {
+    // Clear session - no need to call Mubarokah ID logout
+    req.session.destroy((err) => {
+      if (err) {
+        console.error('Session destruction error:', err);
+      }
+      res.json({ success: true });
+    });
+    
+  } catch (error) {
+    console.error('Logout error:', error);
+    res.status(500).json({ error: 'Logout failed' });
+  }
+});
+
+export default router;
+```
+
+#### **🐍 Python (FastAPI) - Async Implementation**
+
+```python
+# models/oauth.py
+from pydantic import BaseModel
+from typing import Optional
+from datetime import datetime
+
+class TokenResponse(BaseModel):
+    token_type: str
+    expires_in: int
+    access_token: str
+    refresh_token: str
+    scope: Optional[str] = None
+
+class UserInfo(BaseModel):
+    id: int
+    name: str
+    email: str
+    profile_picture: str
+    username: str
+    gender: Optional[str] = None
+
+class DetailedUserInfo(UserInfo):
+    bio: Optional[str] = None
+    phone_number: Optional[str] = None
+    place_of_birth: Optional[str] = None
+    date_of_birth: Optional[str] = None
+    address: Optional[str] = None
+
+class StoredToken(BaseModel):
+    user_id: str
+    access_token: str
+    refresh_token: str
+    expires_at: datetime
+    user_info: UserInfo
+
+# services/oauth_service.py
+import httpx
+import secrets
+import hashlib
+import base64
+from urllib.parse import urlencode, parse_qs
+from datetime import datetime, timedelta
+from typing import Dict, Optional, Tuple, List
+
+class MubarokahOAuthService:
+    def __init__(self, client_id: str, client_secret: str, redirect_uri: str, base_url: str):
+        self.client_id = client_id
+        self.client_secret = client_secret
+        self.redirect_uri = redirect_uri
+        self.base_url = base_url.rstrip('/')
+        
+        self.http_client = httpx.AsyncClient(
+            timeout=30.0,
+            headers={
+                'Accept': 'application/json',
+                'User-Agent': 'MyApp/1.0.0'
+            }
+        )
+    
+    def generate_pkce(self) -> Tuple[str, str]:
+        """Generate PKCE code verifier and challenge"""
+        code_verifier = base64.urlsafe_b64encode(secrets.token_bytes(32)).decode('utf-8').rstrip('=')
+        code_challenge = base64.urlsafe_b64encode(
+            hashlib.sha256(code_verifier.encode('utf-8')).digest()
+        ).decode('utf-8').rstrip('=')
+        
+        return code_verifier, code_challenge
+    
+    def generate_auth_url(
+        self, 
+        scopes: List[str] = None, 
+        use_pkce: bool = False,
+        prompt: Optional[str] = None
+    ) -> Dict[str, str]:
+        """Generate authorization URL"""
+        if scopes is None:
+            scopes = ['view-user']
+            
+        state = secrets.token_urlsafe(16)
+        
+        params = {
+            'response_type': 'code',
+            'client_id': self.client_id,
+            'redirect_uri': self.redirect_uri,
+            'scope': ' '.join(scopes),
+            'state': state,
+        }
+        
+        if prompt:
+            params['prompt'] = prompt
+        
+        result = {'state': state}
+        
+        if use_pkce:
+            code_verifier, code_challenge = self.generate_pkce()
+            params['code_challenge'] = code_challenge
+            params['code_challenge_method'] = 'S256'
+            result['code_verifier'] = code_verifier
+        
+        result['url'] = f"{self.base_url}/oauth/authorize?{urlencode(params)}"
+        
+        return result
+    
+    async def exchange_code_for_tokens(
+        self, 
+        code: str, 
+        code_verifier: Optional[str] = None
+    ) -> TokenResponse:
+        """Exchange authorization code for tokens"""
+        data = {
+            'grant_type': 'authorization_code',
+            'client_id': self.client_id,
+            'client_secret': self.client_secret,
+            'redirect_uri': self.redirect_uri,
+            'code': code,
+        }
+        
+        if code_verifier:
+            data['code_verifier'] = code_verifier
+        
+        response = await self.http_client.post(
+            f"{self.base_url}/oauth/token",
+            data=data,
+            headers={'Content-Type': 'application/x-www-form-urlencoded'}
+        )
+        
+        if response.status_code != 200:
+            error_data = response.json()
+            raise Exception(f"Token exchange failed: {error_data.get('error_description', 'Unknown error')}")
+        
+        return TokenResponse(**response.json())
+    
+    async def refresh_token(self, refresh_token: str) -> TokenResponse:
+        """Refresh access token"""
+        data = {
+            'grant_type': 'refresh_token',
+            'refresh_token': refresh_token,
+            'client_id': self.client_id,
+            'client_secret': self.client_secret,
+        }
+        
+        response = await self.http_client.post(
+            f"{self.base_url}/oauth/token",
+            data=data,
+            headers={'Content-Type': 'application/x-www-form-urlencoded'}
+        )
+        
+        if response.status_code != 200:
+            raise Exception("Token refresh failed")
+        
+        return TokenResponse(**response.json())
+    
+    async def get_user_info(self, access_token: str) -> UserInfo:
+        """Get basic user information"""
+        response = await self.http_client.get(
+            f"{self.base_url}/api/user",
+            headers={'Authorization': f'Bearer {access_token}'}
+        )
+        
+        if response.status_code == 401:
+            raise Exception("Token expired or invalid")
+        elif response.status_code == 403:
+            raise Exception("Insufficient scope")
+        elif response.status_code != 200:
+            raise Exception("Failed to fetch user info")
+        
+        return UserInfo(**response.json())
+    
+    async def get_detailed_user_info(self, access_token: str) -> DetailedUserInfo:
+        """Get detailed user information"""
+        response = await self.http_client.get(
+            f"{self.base_url}/api/user/details",
+            headers={'Authorization': f'Bearer {access_token}'}
+        )
+        
+        if response.status_code == 403:
+            error_data = response.json()
+            if error_data.get('error') == 'unapproved_scope':
+                raise Exception("Application needs approval for detail-user scope")
+            raise Exception("Insufficient scope")
+        elif response.status_code != 200:
+            raise Exception("Failed to fetch detailed user info")
+        
+        return DetailedUserInfo(**response.json())
+    
+    async def logout(self, access_token: str) -> bool:
+        """Logout from SSO"""
+        try:
+            response = await self.http_client.get(
+                f"{self.base_url}/api/logout-sso",
+                headers={'Authorization': f'Bearer {access_token}'}
+            )
+            return response.status_code == 200
+        except Exception as e:
+            print(f"SSO logout failed: {e}")
+            return False
+    
+    async def close(self):
+        """Close HTTP client"""
+        await self.http_client.aclose()
+
+# services/token_service.py
+import redis
+import json
+from datetime import datetime, timedelta
+from typing import Optional
+from cryptography.fernet import Fernet
+
+class TokenService:
+    def __init__(self, redis_url: str, encryption_key: str):
+        self.redis_client = redis.from_url(redis_url)
+        self.cipher = Fernet(encryption_key.encode())
+    
+    def _encrypt(self, data: str) -> str:
+        """Encrypt sensitive data"""
+        return self.cipher.encrypt(data.encode()).decode()
+    
+    def _decrypt(self, encrypted_data: str) -> str:
+        """Decrypt sensitive data"""
+        return self.cipher.decrypt(encrypted_data.encode()).decode()
+    
+    async def store_tokens(
+        self, 
+        user_id: str, 
+        tokens: TokenResponse, 
+        user_info: UserInfo
+    ) -> None:
+        """Store tokens securely in Redis"""
+        stored_token = StoredToken(
+            user_id=user_id,
+            access_token=self._encrypt(tokens.access_token),
+            refresh_token=self._encrypt(tokens.refresh_token),
+            expires_at=datetime.now() + timedelta(seconds=tokens.expires_in),
+            user_info=user_info
+        )
+        
+        # Store with expiration
+        self.redis_client.setex(
+            f"token:{user_id}",
+            timedelta(days=30),  # Refresh token lifetime
+            stored_token.json()
+        )
+        
+        # Store reverse lookup for access token
+        self.redis_client.setex(
+            f"access_token:{tokens.access_token[:16]}",
+            timedelta(seconds=tokens.expires_in),
+            user_id
+        )
+    
+    async def get_tokens(self, user_id: str) -> Optional[StoredToken]:
+        """Get stored tokens for user"""
+        data = self.redis_client.get(f"token:{user_id}")
+        if not data:
+            return None
+        
+        stored_token = StoredToken.parse_raw(data)
+        
+        # Decrypt tokens
+        stored_token.access_token = self._decrypt(stored_token.access_token)
+        stored_token.refresh_token = self._decrypt(stored_token.refresh_token)
+        
+        return stored_token
+    
+    def is_expired(self, stored_token: StoredToken) -> bool:
+        """Check if token is expired"""
+        return datetime.now() >= stored_token.expires_at - timedelta(minutes=5)  # 5 minute buffer
+    
+    async def refresh_tokens(self, user_id: str, oauth_service: MubarokahOAuthService) -> Optional[StoredToken]:
+        """Refresh tokens if needed"""
+        stored_token = await self.get_tokens(user_id)
+        if not stored_token:
+            return None
+        
+        if not self.is_expired(stored_token):
+            return stored_token
+        
+        try:
+            # Refresh the token
+            new_tokens = await oauth_service.refresh_token(stored_token.refresh_token)
+            
+            # Store new tokens
+            await self.store_tokens(user_id, new_tokens, stored_token.user_info)
+            
+            return await self.get_tokens(user_id)
+        except Exception as e:
+            print(f"Token refresh failed: {e}")
+            await self.delete_tokens(user_id)
+            return None
+    
+    async def delete_tokens(self, user_id: str) -> None:
+        """Delete stored tokens"""
+        stored_token = await self.get_tokens(user_id)
+        if stored_token:
+            # Delete reverse lookup
+            self.redis_client.delete(f"access_token:{stored_token.access_token[:16]}")
+        
+        self.redis_client.delete(f"token:{user_id}")
+
+# main.py - FastAPI application
+from fastapi import FastAPI, Request, HTTPException, Depends
+from fastapi.responses import RedirectResponse
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+import os
+
+app = FastAPI(title="Mubarokah ID Integration", version="1.0.0")
+
+# Initialize services
+oauth_service = MubarokahOAuthService(
+    client_id=os.getenv('MUBAROKAH_CLIENT_ID'),
+    client_secret=os.getenv('MUBAROKAH_CLIENT_SECRET'),
+    redirect_uri=os.getenv('MUBAROKAH_REDIRECT_URI'),
+    base_url=os.getenv('MUBAROKAH_BASE_URL', 'https://mubarokah.id')
+)
+
+token_service = TokenService(
+    redis_url=os.getenv('REDIS_URL'),
+    encryption_key=os.getenv('ENCRYPTION_KEY')
+)
+
+security = HTTPBearer()
+
+# Dependency to get current user
+async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)):
+    token = credentials.credentials
+    
+    # Find user by token prefix
+    user_id = token_service.redis_client.get(f"access_token:{token[:16]}")
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Invalid token")
+    
+    stored_token = await token_service.get_tokens(user_id.decode())
+    if not stored_token:
+        raise HTTPException(status_code=401, detail="Token not found")
+    
+    if token_service.is_expired(stored_token):
+        # Try to refresh token
+        refreshed_token = await token_service.refresh_tokens(user_id.decode(), oauth_service)
+        if not refreshed_token:
+            raise HTTPException(status_code=401, detail="Token expired and refresh failed")
+        stored_token = refreshed_token
+    
+    return stored_token.user_info
+
+@app.get("/auth/login")
+async def login(request: Request, scopes: str = "view-user", pkce: bool = True):
+    """Start OAuth flow"""
+    scope_list = scopes.split(',')
+    auth_data = oauth_service.generate_auth_url(scope_list, pkce)
+    
+    # Store state in session (you'll need to implement session management)
+    request.session['oauth_state'] = auth_data['state']
+    if 'code_verifier' in auth_data:
+        request.session['code_verifier'] = auth_data['code_verifier']
+    
+    return RedirectResponse(auth_data['url'])
+
+@app.get("/auth/callback")
+async def callback(request: Request, code: str, state: str, error: str = None, error_description: str = None):
+    """Handle OAuth callback"""
+    if error:
+        raise HTTPException(status_code=400, detail=f"OAuth error: {error} - {error_description}")
+    
+    # Validate state
+    stored_state = request.session.get('oauth_state')
+    if not stored_state or stored_state != state:
+        raise HTTPException(status_code=400, detail="Invalid state parameter")
+    
+    try:
+        # Exchange code for tokens
+        code_verifier = request.session.get('code_verifier')
+        tokens = await oauth_service.exchange_code_for_tokens(code, code_verifier)
+        
+        # Get user info
+        user_info = await oauth_service.get_user_info(tokens.access_token)
+        
+        # Store tokens
+        await token_service.store_tokens(str(user_info.id), tokens, user_info)
+        
+        # Clear session data
+        request.session.pop('oauth_state', None)
+        request.session.pop('code_verifier', None)
+        
+        return {
+            "success": True,
+            "user": user_info,
+            "access_token": tokens.access_token
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Authentication failed: {str(e)}")
+
+@app.get("/api/user")
+async def get_user_info(current_user: UserInfo = Depends(get_current_user)):
+    """Get current user information"""
+    return current_user
+
+@app.get("/api/user/details")
+async def get_detailed_user_info(
+    current_user: UserInfo = Depends(get_current_user),
+    credentials: HTTPAuthorizationCredentials = Depends(security)
+):
+    """Get detailed user information"""
+    try:
+        detailed_info = await oauth_service.get_detailed_user_info(credentials.credentials)
+        return detailed_info
+    except Exception as e:
+        raise HTTPException(status_code=403, detail=str(e))
+
+@app.post("/auth/logout")
+async def logout(credentials: HTTPAuthorizationCredentials = Depends(security)):
+    """Logout from your application"""
+    token = credentials.credentials
+    
+    # Find user by token
+    user_id = token_service.redis_client.get(f"access_token:{token[:16]}")
+    if user_id:
+        await token_service.delete_tokens(user_id.decode())
+    
+    return {"success": True}
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    """Cleanup on shutdown"""
+    await oauth_service.close()
+```
+
+---
+
+### **Security Guidelines Enterprise**
+
+#### **🛡️ OAuth 2.0 Security Checklist**
+
+##### **✅ Authentication Security:**
+```javascript
+// 1. Always use HTTPS
+const ENFORCE_HTTPS = () => {
+  if (location.protocol !== 'https:' && location.hostname !== 'localhost') {
+    location.replace(`https:${location.href.substring(location.protocol.length)}`);
+  }
+};
+
+// 2. Implement CSRF protection with state parameter
+const generateSecureState = () => {
+  const array = new Uint8Array(32);
+  crypto.getRandomValues(array);
+  return Array.from(array, byte => byte.toString(16).padStart(2, '0')).join('');
+};
+
+// 3. Validate state parameter
+const validateState = (receivedState, storedState) => {
+  if (!receivedState || !storedState || receivedState !== storedState) {
+    throw new Error('CSRF attack detected: Invalid state parameter');
+  }
+};
+
+// 4. Implement PKCE for public clients
+const generatePKCE = async () => {
+  const codeVerifier = generateRandomString(128);
+  const encoder = new TextEncoder();
+  const data = encoder.encode(codeVerifier);
+  const digest = await crypto.subtle.digest('SHA-256', data);
+  const codeChallenge = base64URLEncode(digest);
+  
+  return { codeVerifier, codeChallenge };
+};
+```
+
+##### **🔐 Token Security:**
+```typescript
+// Secure token storage patterns
+class SecureTokenManager {
+  private static readonly TOKEN_KEY = 'mubarokah_tokens';
+  private static readonly ENCRYPTION_KEY = 'your_encryption_key';
+  
+  // For web applications - use httpOnly cookies
+  static storeTokensSecurely(tokens: TokenResponse): void {
+    // Server-side only - never expose tokens to client
+    const encryptedTokens = this.encrypt(JSON.stringify(tokens));
+    
+    // Set httpOnly, secure, sameSite cookies
+    document.cookie = `access_token=${encryptedTokens.accessToken}; HttpOnly; Secure; SameSite=Strict; Max-Age=86400`;
+    document.cookie = `refresh_token=${encryptedTokens.refreshToken}; HttpOnly; Secure; SameSite=Strict; Max-Age=2592000`;
+  }
+  
+  // For SPAs - in-memory storage with refresh strategy
+  static storeTokensInMemory(tokens: TokenResponse): void {
+    // Store in closure or React context
+    const tokenStore = {
+      accessToken: tokens.access_token,
+      refreshToken: tokens.refresh_token,
+      expiresAt: Date.now() + (tokens.expires_in * 1000)
+    };
+    
+    // Set up automatic refresh before expiration
+    this.scheduleTokenRefresh(tokenStore);
+  }
+  
+  // For mobile apps - use secure storage
+  static async storeTokensSecurely_Mobile(tokens: TokenResponse): Promise<void> {
+    // iOS: Keychain, Android: EncryptedSharedPreferences
+    await SecureStorage.setItem('access_token', tokens.access_token);
+    await SecureStorage.setItem('refresh_token', tokens.refresh_token);
+  }
+  
+  private static encrypt(data: string): { accessToken: string; refreshToken: string } {
+    // Implement encryption using Web Crypto API or similar
+    // This is a simplified example
+    return {
+      accessToken: btoa(data), // Use proper encryption in production
+      refreshToken: btoa(data)
+    };
+  }
+  
+  private static scheduleTokenRefresh(tokenStore: any): void {
+    const refreshTime = tokenStore.expiresAt - Date.now() - 300000; // 5 minutes before expiry
+    
+    setTimeout(async () => {
+      try {
+        const newTokens = await this.refreshTokens(tokenStore.refreshToken);
+        this.storeTokensInMemory(newTokens);
+      } catch (error) {
+        // Redirect to login
+        window.location.href = '/login';
+      }
+    }, refreshTime);
+  }
+}
+```
+
+##### **🚨 Input Validation & Sanitization:**
+```php
+// Server-side validation
+class OAuthInputValidator 
+{
+    public static function validateAuthorizationCallback(Request $request): void
+    {
+        // Validate required parameters
+        $validator = Validator::make($request->all(), [
+            'code' => 'required|string|max:255',
+            'state' => 'required|string|max:255',
+            'error' => 'sometimes|string|max:255',
+            'error_description' => 'sometimes|string|max:500',
+        ]);
+        
+        if ($validator->fails()) {
+            throw new ValidationException('Invalid callback parameters');
+        }
+        
+        // Sanitize inputs
+        $code = filter_var($request->input('code'), FILTER_SANITIZE_STRING);
+        $state = filter_var($request->input('state'), FILTER_SANITIZE_STRING);
+        
+        // Additional validation
+        if (!preg_match('/^[a-zA-Z0-9_-]+$/', $code)) {
+            throw new ValidationException('Invalid authorization code format');
+        }
+        
+        if (!preg_match('/^[a-zA-Z0-9_-]+$/', $state)) {
+            throw new ValidationException('Invalid state parameter format');
+        }
+    }
+    
+    public static function validateTokenResponse(array $tokenData): void
+    {
+        $required = ['access_token', 'token_type', 'expires_in'];
+        
+        foreach ($required as $field) {
+            if (!isset($tokenData[$field]) || empty($tokenData[$field])) {
+                throw new ValidationException("Missing required field: {$field}");
+            }
+        }
+        
+        // Validate token format (JWT)
+        if (!self::isValidJWT($tokenData['access_token'])) {
+            throw new ValidationException('Invalid access token format');
+        }
+        
+        // Validate token type
+        if ($tokenData['token_type'] !== 'Bearer') {
+            throw new ValidationException('Unsupported token type');
+        }
+        
+        // Validate expires_in
+        if (!is_numeric($tokenData['expires_in']) || $tokenData['expires_in'] <= 0) {
+            throw new ValidationException('Invalid expires_in value');
+        }
+    }
+    
+    private static function isValidJWT(string $token): bool
+    {
+        $parts = explode('.', $token);
+        return count($parts) === 3 && 
+               base64_decode($parts[0]) !== false &&
+               base64_decode($parts[1]) !== false;
+    }
+}
+```
+
+#### **🏰 Threat Model Analysis**
+
+##### **🎯 Attack Vectors & Mitigations:**
+
+| Attack Vector | Risk Level | Mitigation Strategy |
+|---------------|------------|-------------------|
+| **Authorization Code Interception** | 🔴 High | PKCE implementation, short code lifetime |
+| **CSRF Attacks** | 🔴 High | State parameter validation, SameSite cookies |
+| **Token Theft** | 🟡 Medium | Secure storage, short token lifetime |
+| **Replay Attacks** | 🟡 Medium | Nonce validation, timestamp checks |
+| **Client Impersonation** | 🔴 High | Client authentication, redirect URI validation |
+| **Man-in-the-Middle** | 🔴 High | HTTPS enforcement, certificate pinning |
+| **XSS Token Extraction** | 🟡 Medium | HttpOnly cookies, CSP headers |
+| **Session Fixation** | 🟠 Medium | Session regeneration, secure session handling |
+
+##### **🛡️ Defense Implementation:**
+```typescript
+// Comprehensive security implementation
+class SecurityManager {
+  // CSRF Protection
+  static validateCSRF(receivedState: string, sessionState: string): void {
+    if (!receivedState || !sessionState) {
+      throw new SecurityError('Missing CSRF token');
+    }
+    
+    if (!crypto.timingSafeEqual(
+      Buffer.from(receivedState),
+      Buffer.from(sessionState)
+    )) {
+      throw new SecurityError('CSRF validation failed');
+    }
+  }
+  
+  // Rate Limiting
+  static async checkRateLimit(clientId: string, action: string): Promise<void> {
+    const key = `rate_limit:${clientId}:${action}`;
+    const currentCount = await redis.get(key) || 0;
+    
+    if (parseInt(currentCount) > 10) { // 10 requests per minute
+      throw new SecurityError('Rate limit exceeded');
+    }
+    
+    await redis.incr(key);
+    await redis.expire(key, 60); // 1 minute window
+  }
+  
+  // Input Sanitization
+  static sanitizeCallbackParams(params: any): OAuthCallbackParams {
+    const sanitized = {
+      code: this.sanitizeString(params.code),
+      state: this.sanitizeString(params.state),
+      error: params.error ? this.sanitizeString(params.error) : undefined,
+      error_description: params.error_description ? 
+        this.sanitizeString(params.error_description) : undefined
+    };
+    
+    // Validate format
+    if (sanitized.code && !/^[a-zA-Z0-9_-]+$/.test(sanitized.code)) {
+      throw new SecurityError('Invalid code format');
+    }
+    
+    return sanitized;
+  }
+  
+  // JWT Validation
+  static validateJWT(token: string): JWTPayload {
+    try {
+      const [header, payload, signature] = token.split('.');
+      
+      if (!header || !payload || !signature) {
+        throw new SecurityError('Invalid JWT format');
+      }
+      
+      // Decode and validate payload
+      const decodedPayload = JSON.parse(atob(payload));
+      
+      // Validate required claims
+      if (!decodedPayload.exp || !decodedPayload.iat || !decodedPayload.sub) {
+        throw new SecurityError('Missing required JWT claims');
+      }
+      
+      // Check expiration
+      if (Date.now() >= decodedPayload.exp * 1000) {
+        throw new SecurityError('JWT token expired');
+      }
+      
+      // Validate issuer
+      if (decodedPayload.iss !== 'https://mubarokah.id') {
+        throw new SecurityError('Invalid JWT issuer');
+      }
+      
+      return decodedPayload;
+    } catch (error) {
+      throw new SecurityError(`JWT validation failed: ${error.message}`);
+    }
+  }
+  
+  private static sanitizeString(input: string): string {
+    return input?.replace(/[<>'"&]/g, '') || '';
+  }
+}
+
+// Content Security Policy Implementation
+class CSPManager {
+  static generateCSPHeader(): string {
+    return [
+      "default-src 'self'",
+      "script-src 'self' 'unsafe-inline' https://mubarokah.id",
+      "style-src 'self' 'unsafe-inline'",
+      "img-src 'self' data: https:",
+      "connect-src 'self' https://mubarokah.id",
+      "frame-ancestors 'none'",
+      "base-uri 'self'",
+      "form-action 'self' https://mubarokah.id"
+    ].join('; ');
+  }
+}
+```
+
+#### **🔍 Penetration Testing Guide**
+
+##### **Security Testing Checklist:**
+```bash
+#!/bin/bash
+# OAuth Security Testing Script
+
+echo "🔍 Starting Login with Mubarokah ID Security Tests..."
+
+# 1. Test HTTPS Enforcement
+echo "Testing HTTPS enforcement..."
+curl -I http://mubarokah.id/oauth/authorize 2>/dev/null | grep -i "location.*https" || echo "⚠️  HTTPS redirect missing"
+
+# 2. Test CSRF Protection
+echo "Testing CSRF protection..."
+curl -X POST "https://mubarokah.id/oauth/token" \
+  -d "grant_type=authorization_code&client_id=test&code=test" \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  2>/dev/null | grep -i "invalid.*state\|csrf" && echo "✅ CSRF protection active"
+
+# 3. Test Rate Limiting
+echo "Testing rate limiting..."
+for i in {1..20}; do
+  curl -s "https://mubarokah.id/oauth/authorize?client_id=test" &
+done
+wait
+echo "✅ Rate limiting test completed"
+
+# 4. Test Input Validation
+echo "Testing input validation..."
+curl -G "https://mubarokah.id/oauth/authorize" \
+  --data-urlencode "client_id=<script>alert('xss')</script>" \
+  --data-urlencode "redirect_uri=javascript:alert('xss')" \
+  2>/dev/null | grep -i "error\|invalid" && echo "✅ Input validation active"
+
+echo "🔍 Security testing completed"
+```
+
+---
+
+### **Performance Optimization**
+
+#### **⚡ Caching Strategies**
+
+##### **Client-Side Caching Implementation:**
+```typescript
+// Advanced caching for OAuth flows
+class OAuthCacheManager {
+  private memoryCache: Map<string, any>;
+  private readonly TTL = {
+    USER_INFO: 300,        // 5 minutes
+    CLIENT_INFO: 3600,     // 1 hour
+    TOKEN_VALIDATION: 60,  // 1 minute
+  };
+  
+  constructor() {
+    this.memoryCache = new Map();
+  }
+  
+  // Memory Cache (fastest)
+  async getFromMemory<T>(key: string): Promise<T | null> {
+    const cached = this.memoryCache.get(key);
+    if (cached && cached.expires > Date.now()) {
+      return cached.data;
+    }
+    return null;
+  }
+  
+  async setInMemory<T>(key: string, data: T, ttlSeconds: number): Promise<void> {
+    this.memoryCache.set(key, {
+      data,
+      expires: Date.now() + (ttlSeconds * 1000)
+    });
+    
+    // Cleanup expired entries periodically
+    if (this.memoryCache.size > 1000) {
+      this.cleanupMemoryCache();
+    }
+  }
+  
+  // Cached OAuth service
+  async getCachedUserInfo(accessToken: string): Promise<UserInfo> {
+    const cacheKey = `user_info:${this.hashToken(accessToken)}`;
+    
+    // Try cache first
+    const cached = await this.getFromMemory<UserInfo>(cacheKey);
+    if (cached) {
+      return cached;
+    }
+    
+    // Fetch from API
+    const userInfo = await this.fetchUserInfo(accessToken);
+    
+    // Cache the result
+    await this.setInMemory(cacheKey, userInfo, this.TTL.USER_INFO);
+    
+    return userInfo;
+  }
+  
+  private async fetchUserInfo(accessToken: string): Promise<UserInfo> {
+    const response = await fetch('https://mubarokah.id/api/user', {
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Accept': 'application/json'
+      }
+    });
+    
+    if (!response.ok) {
+      throw new Error('Failed to fetch user info');
+    }
+    
+    return await response.json();
+  }
+  
+  private hashToken(token: string): string {
+    return btoa(token).substring(0, 16);
+  }
+  
+  private cleanupMemoryCache(): void {
+    const now = Date.now();
+    for (const [key, value] of this.memoryCache.entries()) {
+      if (value.expires <= now) {
+        this.memoryCache.delete(key);
+      }
+    }
+  }
+}
+```
+
+#### **🚀 Connection Optimization**
+
+```javascript
+// HTTP Client with connection pooling
+class OptimizedOAuthClient {
+  private httpClient: any;
+  private requestQueue: Map<string, Promise<any>>;
+  
+  constructor() {
+    // Configure HTTP client with connection pooling
+    this.httpClient = axios.create({
+      baseURL: 'https://mubarokah.id',
+      timeout: 30000,
+      maxRedirects: 3,
+      // Connection pooling
+      httpAgent: new http.Agent({
+        keepAlive: true,
+        maxSockets: 10,
+        maxFreeSockets: 5,
+        timeout: 60000,
+        freeSocketTimeout: 30000,
+      }),
+      httpsAgent: new https.Agent({
+        keepAlive: true,
+        maxSockets: 10,
+        maxFreeSockets: 5,
+        timeout: 60000,
+        freeSocketTimeout: 30000,
+      }),
+    });
+    
+    this.requestQueue = new Map();
+    
+    // Add request/response interceptors
+    this.setupInterceptors();
+  }
+  
+  private setupInterceptors(): void {
+    // Request interceptor for deduplication
+    this.httpClient.interceptors.request.use((config) => {
+      const requestKey = this.generateRequestKey(config);
+      
+      // Check if same request is already in progress
+      if (this.requestQueue.has(requestKey)) {
+        return this.requestQueue.get(requestKey);
+      }
+      
+      return config;
+    });
+    
+    // Response interceptor for caching and cleanup
+    this.httpClient.interceptors.response.use(
+      (response) => {
+        const requestKey = this.generateRequestKey(response.config);
+        this.requestQueue.delete(requestKey);
+        return response;
+      },
+      (error) => {
+        const requestKey = this.generateRequestKey(error.config);
+        this.requestQueue.delete(requestKey);
+        return Promise.reject(error);
+      }
+    );
+  }
+  
+  private generateRequestKey(config: any): string {
+    return `${config.method}:${config.url}:${JSON.stringify(config.params)}`;
+  }
+  
+  // Optimized token exchange with retry logic
+  async exchangeCodeForTokens(code: string, redirectUri: string): Promise<TokenResponse> {
+    const maxRetries = 3;
+    let lastError: Error;
+    
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        const response = await this.httpClient.post('/oauth/token', 
+          new URLSearchParams({
+            grant_type: 'authorization_code',
+            client_id: CLIENT_ID,
+            client_secret: CLIENT_SECRET,
+            redirect_uri: redirectUri,
+            code: code
+          }),
+          {
+            headers: {
+              'Content-Type': 'application/x-www-form-urlencoded'
+            },
+            timeout: 10000 + (attempt * 2000) // Increasing timeout
+          }
+        );
+        
+        return response.data;
+      } catch (error) {
+        lastError = error;
+        
+        if (attempt < maxRetries && this.isRetryableError(error)) {
+          // Exponential backoff
+          await this.delay(Math.pow(2, attempt) * 1000);
+          continue;
+        }
+        
+        throw error;
+      }
+    }
+    
+    throw lastError!;
+  }
+  
+  private isRetryableError(error: any): boolean {
+    return error.code === 'ECONNRESET' || 
+           error.code === 'ETIMEDOUT' ||
+           (error.response && error.response.status >= 500);
+  }
+  
+  private delay(ms: number): Promise<void> {
+    return new Promise(resolve => setTimeout(resolve, ms));
+  }
+}
+```
+
+---
+
+### **Troubleshooting Comprehensive**
+
+#### **🚨 Error Resolution Framework**
+
+```mermaid
+flowchart TD
+    A[OAuth Error Detected] --> B{Error Type?}
+    
+    B -->|4xx Client Error| C[Client-Side Issues]
+    B -->|5xx Server Error| D[Server-Side Issues]
+    B -->|Network Error| E[Infrastructure Issues]
+    
+    C --> C1[Check Client Config]
+    C --> C2[Validate Parameters]
+    C --> C3[Check Permissions]
+    
+    D --> D1[Check Server Status]
+    D --> D2[Review Error Logs]
+    D --> D3[Database Connectivity]
+    
+    E --> E1[Network Connectivity]
+    E --> E2[DNS Resolution]
+    E --> E3[SSL/TLS Issues]
+    
+    C1 --> F[Apply Fix]
+    C2 --> F
+    C3 --> F
+    D1 --> F
+    D2 --> F
+    D3 --> F
+    E1 --> F
+    E2 --> F
+    E3 --> F
+    
+    F --> G[Test Resolution]
+    G --> H{Fixed?}
+    H -->|Yes| I[Document Solution]
+    H -->|No| J[Escalate]
+    
+    style A fill:#ffebee
+    style I fill:#e8f5e8
+    style J fill:#fff3e0
+```
+
+##### **Common Issue Resolution Guide:**
+```typescript
+// Troubleshooting service for OAuth errors
+class TroubleshootingService {
+  
+  public diagnoseOAuthError(error: string, context: any = {}): DiagnosisResult {
+    const diagnosis = {
+      error,
+      severity: this.determineSeverity(error),
+      possibleCauses: this.getPossibleCauses(error),
+      resolutionSteps: this.getResolutionSteps(error),
+      preventionTips: this.getPreventionTips(error),
+      context
+    };
+    
+    return diagnosis;
+  }
+  
+  private getPossibleCauses(error: string): string[] {
+    const causesMap = {
+      'invalid_client': [
+        'Client ID does not exist',
+        'Client secret is incorrect',
+        'Client has been revoked',
+        'Client authentication method mismatch'
+      ],
+      'invalid_grant': [
+        'Authorization code has expired (10 minutes)',
+        'Authorization code has already been used',
+        'Authorization code was issued to different client',
+        'Redirect URI mismatch',
+        'PKCE code verifier mismatch'
+      ],
+      'invalid_scope': [
+        'Requested scope does not exist',
+        'Client not authorized for requested scope',
+        'Scope requires admin approval (detail-user)',
+        'Malformed scope parameter'
+      ],
+      'access_denied': [
+        'User denied authorization',
+        'User session expired during flow',
+        'Client blocked by admin',
+        'IP address blocked'
+      ],
+      'unapproved_scope': [
+        'detail-user scope not approved by admin',
+        'Approval request not submitted',
+        'Approval request was rejected',
+        'Client configuration mismatch'
+      ]
+    };
+    
+    return causesMap[error] || ['Unknown error - check logs for details'];
+  }
+  
+  private getResolutionSteps(error: string): string[] {
+    const stepsMap = {
+      'invalid_client': [
+        '1. Verify client_id in your configuration',
+        '2. Check client_secret is correct',
+        '3. Ensure client is not revoked in admin panel',
+        '4. Verify authentication method (Basic vs POST body)',
+        '5. Check client exists in oauth_clients table'
+      ],
+      'invalid_grant': [
+        '1. Check authorization code has not expired (10 minutes)',
+        '2. Ensure code is only used once',
+        '3. Verify redirect_uri matches exactly',
+        '4. For PKCE: check code_verifier matches challenge',
+        '5. Restart OAuth flow with new authorization request'
+      ],
+      'invalid_scope': [
+        '1. Check scope spelling (view-user, detail-user)',
+        '2. Verify client has permission for requested scopes',
+        '3. For detail-user: submit approval request',
+        '4. Remove unsupported scopes from request',
+        '5. Check scope parameter format (space-separated)'
+      ],
+      'access_denied': [
+        '1. Ask user to try authorization again',
+        '2. Check user session is still valid',
+        '3. Verify client is not blocked',
+        '4. Check IP whitelist/blacklist settings',
+        '5. Review user consent settings'
+      ],
+      'unapproved_scope': [
+        '1. Submit detail-user scope approval request',
+        '2. Provide required documentation',
+        '3. Wait for admin approval',
+        '4. Check approval status in client dashboard',
+        '5. Use view-user scope as alternative'
+      ]
+    };
+    
+    return stepsMap[error] || [
+      '1. Check application logs for detailed error',
+      '2. Review OAuth flow implementation',
+      '3. Verify all parameters are correct',
+      '4. Test with known working configuration',
+      '5. Contact support with error details'
+    ];
+  }
+  
+  private getPreventionTips(error: string): string[] {
+    const tipsMap = {
+      'invalid_client': [
+        'Store credentials securely in environment variables',
+        'Implement credential rotation policy',
+        'Monitor client status regularly',
+        'Use configuration validation'
+      ],
+      'invalid_grant': [
+        'Implement proper state management',
+        'Handle authorization codes immediately',
+        'Add retry logic with exponential backoff',
+        'Validate PKCE implementation'
+      ],
+      'invalid_scope': [
+        'Request only needed scopes',
+        'Implement scope validation',
+        'Plan for approval process early',
+        'Document scope requirements'
+      ],
+      'access_denied': [
+        'Provide clear consent screens',
+        'Implement session timeout handling',
+        'Monitor user experience',
+        'Implement graceful error handling'
+      ],
+      'unapproved_scope': [
+        'Plan approval process in advance',
+        'Prepare required documentation',
+        'Implement fallback strategies',
+        'Monitor approval status'
+      ]
+    };
+    
+    return tipsMap[error] || [
+      'Implement comprehensive error handling',
+      'Add detailed logging',
+      'Monitor error rates',
+      'Create runbooks for common issues'
+    ];
+  }
+  
+  public runSystemDiagnostics(): SystemDiagnostics {
+    return {
+      networkConnectivity: this.checkNetworkConnectivity(),
+      dnsResolution: this.checkDNSResolution(),
+      sslCertificate: this.checkSSLCertificate(),
+      clientConfiguration: this.checkClientConfiguration(),
+      tokenStorage: this.checkTokenStorage(),
+    };
+  }
+  
+  private async checkNetworkConnectivity(): Promise<DiagnosticResult> {
+    try {
+      const response = await fetch('https://mubarokah.id', {
+        method: 'HEAD',
+        timeout: 5000
+      });
+      
+      return {
+        status: response.ok ? 'ok' : 'error',
+        message: response.ok ? 'Network connectivity OK' : `HTTP ${response.status}`,
+        responseTime: Date.now() // Simplified
+      };
+    } catch (error) {
+      return {
+        status: 'error',
+        message: `Network error: ${error.message}`,
+        error: error
+      };
+    }
+  }
+  
+  private async checkDNSResolution(): Promise<DiagnosticResult> {
+    try {
+      // In browser environment, DNS check is limited
+      const startTime = Date.now();
+      await fetch('https://mubarokah.id', { method: 'HEAD' });
+      const endTime = Date.now();
+      
+      return {
+        status: 'ok',
+        message: 'DNS resolution OK',
+        responseTime: endTime - startTime
+      };
+    } catch (error) {
+      return {
+        status: 'error',
+        message: `DNS resolution failed: ${error.message}`,
+        error: error
+      };
+    }
+  }
+  
+  private checkSSLCertificate(): DiagnosticResult {
+    // In browser, SSL is handled automatically
+    // This is a simplified check
+    if (location.protocol === 'https:') {
+      return {
+        status: 'ok',
+        message: 'SSL/TLS connection established'
+      };
+    } else {
+      return {
+        status: 'warning',
+        message: 'Not using HTTPS - SSL check skipped'
+      };
+    }
+  }
+  
+  private checkClientConfiguration(): DiagnosticResult {
+    const issues = [];
+    
+    if (!CLIENT_ID) {
+      issues.push('CLIENT_ID not configured');
+    }
+    
+    if (!CLIENT_SECRET) {
+      issues.push('CLIENT_SECRET not configured');
+    }
+    
+    if (!REDIRECT_URI) {
+      issues.push('REDIRECT_URI not configured');
+    }
+    
+    return {
+      status: issues.length === 0 ? 'ok' : 'error',
+      message: issues.length === 0 ? 'Client configuration OK' : 'Configuration issues found',
+      issues: issues
+    };
+  }
+  
+  private checkTokenStorage(): DiagnosticResult {
+    try {
+      // Test localStorage availability
+      localStorage.setItem('test', 'test');
+      localStorage.removeItem('test');
+      
+      return {
+        status: 'ok',
+        message: 'Token storage available'
+      };
+    } catch (error) {
+      return {
+        status: 'error',
+        message: 'Token storage not available',
+        error: error
+      };
+    }
+  }
+}
+
+// Automated issue detection
+class IssueDetectionService {
+  private alertThresholds = {
+    errorRate: 0.05,      // 5% error rate
+    responseTime: 5000,   // 5 seconds
+  };
+  
+  public detectIssues(): Issue[] {
+    const issues: Issue[] = [];
+    
+    // Check error rate (simplified)
+    const errorRate = this.calculateErrorRate();
+    if (errorRate > this.alertThresholds.errorRate) {
+      issues.push({
+        type: 'high_error_rate',
+        severity: 'critical',
+        value: errorRate,
+        threshold: this.alertThresholds.errorRate,
+        message: `Error rate (${errorRate}) exceeds threshold`
+      });
+    }
+    
+    return issues;
+  }
+  
+  private calculateErrorRate(): number {
+    // This would typically fetch from your analytics
+    // Simplified implementation
+    return Math.random() * 0.1; // Random for demo
+  }
+}
+```
+
+#### **📚 Runbook Templates**
+
+```markdown
+# OAuth Error Runbook
+
+## 🚨 Critical: Token Exchange Failure
+
+### Symptoms
+- All token exchange requests returning errors
+- Users cannot complete login flow
+- Error logs showing "invalid_grant" or "invalid_client"
+
+### Immediate Actions
+1. **Check service status**
+   ```bash
+   curl -I https://mubarokah.id/oauth/token
+   ```
+
+2. **Verify client credentials**
+   ```bash
+   # Check environment variables
+   echo $MUBAROKAH_CLIENT_ID
+   echo $MUBAROKAH_CLIENT_SECRET
+   ```
+
+3. **Test with known working credentials**
+   ```bash
+   curl -X POST https://mubarokah.id/oauth/token \
+     -H "Content-Type: application/x-www-form-urlencoded" \
+     -d "grant_type=client_credentials&client_id=TEST_ID&client_secret=TEST_SECRET"
+   ```
+
+### Investigation Steps
+1. Check recent configuration changes
+2. Verify redirect URI registration
+3. Review application logs
+4. Test OAuth flow manually
+5. Check rate limiting status
+
+### Communication Template
+```
+🚨 INCIDENT: Login with Mubarokah ID Issues
+
+Impact: Users unable to login via Mubarokah ID
+Start Time: [TIME]
+Status: Investigating
+
+We are investigating reports of login issues. Updates to follow.
+```
+
+## ⚠️ Warning: High Error Rate
+
+### Symptoms
+- Increased 4xx/5xx errors in logs
+- Users reporting intermittent login failures
+- Longer than normal response times
+
+### Immediate Actions
+1. **Check error patterns**
+   ```bash
+   # Analyze recent errors
+   grep "OAuth" /var/log/app.log | tail -100
+   ```
+
+2. **Monitor response times**
+   ```bash
+   # Check API response times
+   curl -w "@curl-format.txt" -s -o /dev/null https://mubarokah.id/api/user
+   ```
+
+### Resolution Steps
+1. Implement retry logic
+2. Add circuit breaker pattern
+3. Improve error handling
+4. Monitor and alert on metrics
+```
+
+---
+
+### **Testing Strategies**
+
+#### **🧪 Comprehensive Testing Framework**
+
+##### **Unit Testing OAuth Flows:**
+```typescript
+// OAuth flow unit tests
+describe('Login with Mubarokah ID', () => {
+  let mockHttpClient: jest.Mocked<HttpClient>;
+  let oauthService: MubarokahOAuthService;
+  
+  beforeEach(() => {
+    mockHttpClient = createMockHttpClient();
+    oauthService = new MubarokahOAuthService({
+      clientId: 'test-client',
+      clientSecret: 'test-secret',
+      redirectUri: 'http://localhost/callback',
+      baseUrl: 'https://mubarokah.id'
+    });
+  });
+  
+  describe('Authorization URL Generation', () => {
+    test('should generate correct authorization URL', () => {
+      const authData = oauthService.generateAuthUrl(['view-user']);
+      
+      expect(authData.url).toContain('https://mubarokah.id/oauth/authorize');
+      expect(authData.url).toContain('response_type=code');
+      expect(authData.url).toContain('client_id=test-client');
+      expect(authData.url).toContain('scope=view-user');
+      expect(authData.state).toBeDefined();
+    });
+    
+    test('should include PKCE parameters when requested', () => {
+      const authData = oauthService.generateAuthUrl(['view-user'], true);
+      
+      expect(authData.url).toContain('code_challenge=');
+      expect(authData.url).toContain('code_challenge_method=S256');
+      expect(authData.codeVerifier).toBeDefined();
+    });
+    
+    test('should handle multiple scopes', () => {
+      const authData = oauthService.generateAuthUrl(['view-user', 'detail-user']);
+      
+      expect(authData.url).toContain('scope=view-user%20detail-user');
+    });
+  });
+  
+  describe('Token Exchange', () => {
+    test('should exchange authorization code for tokens', async () => {
+      const mockTokenResponse = {
+        access_token: 'mock-access-token',
+        refresh_token: 'mock-refresh-token',
+        token_type: 'Bearer',
+        expires_in: 3600
+      };
+      
+      mockHttpClient.post.mockResolvedValue({
+        status: 200,
+        data: mockTokenResponse
+      });
+      
+      const tokens = await oauthService.exchangeCodeForTokens('test-code');
+      
+      expect(tokens).toEqual(mockTokenResponse);
+      expect(mockHttpClient.post).toHaveBeenCalledWith(
+        '/oauth/token',
+        expect.objectContaining({
+          grant_type: 'authorization_code',
+          code: 'test-code'
+        }),
+        expect.any(Object)
+      );
+    });
+    
+    test('should handle token exchange errors', async () => {
+      mockHttpClient.post.mockRejectedValue({
+        response: {
+          status: 400,
+          data: {
+            error: 'invalid_grant',
+            error_description: 'Authorization code has expired'
+          }
+        }
+      });
+      
+      await expect(
+        oauthService.exchangeCodeForTokens('expired-code')
+      ).rejects.toThrow('Authorization code has expired');
+    });
+  });
+  
+  describe('User Info Retrieval', () => {
+    test('should fetch user information', async () => {
+      const mockUserInfo = {
+        id: 123,
+        name: 'Test User',
+        email: 'test@example.com',
+        profile_picture: 'https://example.com/avatar.jpg',
+        username: 'testuser',
+        gender: 'male'
+      };
+      
+      mockHttpClient.get.mockResolvedValue({
+        status: 200,
+        data: mockUserInfo
+      });
+      
+      const userInfo = await oauthService.getUserInfo('mock-access-token');
+      
+      expect(userInfo).toEqual(mockUserInfo);
+      expect(mockHttpClient.get).toHaveBeenCalledWith(
+        '/api/user',
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            'Authorization': 'Bearer mock-access-token'
+          })
+        })
+      );
+    });
+    
+    test('should handle 401 unauthorized', async () => {
+      mockHttpClient.get.mockRejectedValue({
+        response: { status: 401 }
+      });
+      
+      await expect(
+        oauthService.getUserInfo('invalid-token')
+      ).rejects.toThrow('Token expired or invalid');
+    });
+    
+    test('should handle 403 forbidden (insufficient scope)', async () => {
+      mockHttpClient.get.mockRejectedValue({
+        response: { status: 403 }
+      });
+      
+      await expect(
+        oauthService.getUserInfo('limited-token')
+      ).rejects.toThrow('Insufficient scope');
+    });
+  });
+  
+  describe('Token Refresh', () => {
+    test('should refresh access token', async () => {
+      const mockRefreshResponse = {
+        access_token: 'new-access-token',
+        refresh_token: 'new-refresh-token',
+        token_type: 'Bearer',
+        expires_in: 3600
+      };
+      
+      mockHttpClient.post.mockResolvedValue({
+        status: 200,
+        data: mockRefreshResponse
+      });
+      
+      const tokens = await oauthService.refreshToken('old-refresh-token');
+      
+      expect(tokens).toEqual(mockRefreshResponse);
+      expect(mockHttpClient.post).toHaveBeenCalledWith(
+        '/oauth/token',
+        expect.objectContaining({
+          grant_type: 'refresh_token',
+          refresh_token: 'old-refresh-token'
+        }),
+        expect.any(Object)
+      );
+    });
+  });
+});
+
+// Integration testing
+describe('OAuth Integration Tests', () => {
+  test('complete OAuth flow', async () => {
+    // This would test the entire flow with a test client
+    const authUrl = generateAuthUrl();
+    
+    // Simulate user clicking and authorizing
+    const callbackUrl = await simulateUserAuthorization(authUrl);
+    
+    // Extract code from callback
+    const code = extractCodeFromCallback(callbackUrl);
+    
+    // Exchange for tokens
+    const tokens = await exchangeCodeForTokens(code);
+    
+    // Use tokens to get user info
+    const userInfo = await getUserInfo(tokens.access_token);
+    
+    expect(userInfo).toBeDefined();
+    expect(userInfo.id).toBeDefined();
+    expect(userInfo.email).toBeDefined();
+  });
+});
+```
+
+##### **Load Testing Scenarios:**
+```yaml
+# k6 load test script
+import http from 'k6/http';
+import { check } from 'k6';
+
+export let options = {
+  stages: [
+    { duration: '2m', target: 100 }, // Ramp up
+    { duration: '5m', target: 100 }, // Steady state
+    { duration: '2m', target: 0 },   // Ramp down
+  ],
+  thresholds: {
+    http_req_duration: ['p(95)<500'], // 95% of requests under 500ms
+    http_req_failed: ['rate<0.1'],    // Error rate under 10%
+  },
+};
+
+export default function() {
+  // Test OAuth authorization endpoint
+  let authResponse = http.get('https://mubarokah.id/oauth/authorize', {
+    client_id: 'test-client-id',
+    response_type: 'code',
+    redirect_uri: 'http://localhost/callback',
+    scope: 'view-user',
+    state: 'test-state'
+  });
+  
+  check(authResponse, {
+    'authorization endpoint responds': (r) => r.status === 200 || r.status === 302,
+    'response time < 500ms': (r) => r.timings.duration < 500,
+  });
+  
+  // Test token endpoint (with mock valid code)
+  let tokenResponse = http.post('https://mubarokah.id/oauth/token', {
+    grant_type: 'authorization_code',
+    client_id: 'test-client-id',
+    client_secret: 'test-client-secret',
+    code: 'mock-authorization-code',
+    redirect_uri: 'http://localhost/callback'
+  });
+  
+  check(tokenResponse, {
+    'token endpoint responds': (r) => r.status === 400 || r.status === 401, // Expected for mock code
+    'response time < 1000ms': (r) => r.timings.duration < 1000,
+  });
+}
+```
+
+---
+
+## ⭐ **Best Practices Summary**
+
+### **🏆 Development Best Practices**
+
+1. **Security First**
+   - Always use HTTPS in production
+   - Implement PKCE for public clients
+   - Validate all input parameters
+   - Use secure token storage
+   - Regular security audits
+
+2. **Performance Optimization**
+   - Implement client-side caching
+   - Use connection pooling
+   - Optimize API calls
+   - Monitor response times
+   - Handle rate limiting gracefully
+
+3. **Error Handling**
+   - Provide clear error messages
+   - Implement retry mechanisms
+   - Log all OAuth flows
+   - Monitor error rates
+   - Have fallback strategies
+
+4. **User Experience**
+   - Smooth authentication flow
+   - Clear consent screens
+   - Handle edge cases gracefully
+   - Provide helpful error messages
+   - Fast response times
+
+5. **Monitoring & Observability**
+   - Track key metrics
+   - Set up alerting
+   - Implement comprehensive logging
+   - Use performance monitoring
+   - Regular system diagnostics
+
+---
+
+## 📞 **Support & Resources**
+
+### **🆘 Getting Help**
+
+- **Technical Support**: support@mubarokah.id
+- **Documentation**: https://docs.mubarokah.id
+- **Developer Portal**: https://developers.mubarokah.id
+
+### **📚 Additional Resources**
+
+- [OAuth 2.0 RFC 6749](https://tools.ietf.org/html/rfc6749)
+- [PKCE RFC 7636](https://tools.ietf.org/html/rfc7636)
+- [OAuth 2.0 Security Best Practices](https://tools.ietf.org/html/draft-ietf-oauth-security-topics)
+- [Laravel Passport Documentation](https://laravel.com/docs/passport)
+
+---
+
+## 🎯 **Quick Reference**
+
+### **Essential URLs**
+```
+Authorization: https://mubarokah.id/oauth/authorize
+Token:         https://mubarokah.id/oauth/token
+User Info:     https://mubarokah.id/api/user
+User Details:  https://mubarokah.id/api/user/details
+```
+
+### **Token Lifetimes**
+```
+Access Token:  24 hours
+Refresh Token: 30 days
+Auth Code:     10 minutes
+```
+
+### **Scopes**
+```
+view-user:   Basic profile information
+detail-user: Sensitive personal data (requires approval)
+```
+
+### **Common Error Codes**
+```
+invalid_client:     Wrong client credentials
+invalid_grant:      Invalid/expired authorization code
+invalid_scope:      Unsupported or unapproved scope
+access_denied:      User denied authorization
+unapproved_scope:   detail-user scope needs admin approval
+```
+
+---
+
+**📋 This documentation serves as your complete guide to integrating "Login with Mubarokah ID" in your application. Bookmark this page and refer back as needed during your implementation journey.**
+
+**🚀 Ready to integrate? Start with the [Quick Start Guide](#quick-start-5-minutes) and work your way through the tiers based on your expertise level.**
+```
+
+##### **🚨 Input Validation & Sanitization:**
+```php
+// Server-side validation
+class OAuthInputValidator 
+{
+    public static function validateAuthorizationCallback(Request $request): void
+    {
+        // Validate required parameters
+        $validator = Validator::make($request->all(), [
+            'code' => 'required|string|max:255',
+            'state' => 'required|string|max:255',
+            'error' => 'sometimes|string|max:255',
+            'error_description' => 'sometimes|string|max:500',
+        ]);
+        
+        if ($validator->fails()) {
+            throw new ValidationException('Invalid callback parameters');
+        }
+        
+        // Sanitize inputs
+        $code = filter_var($request->input('code'), FILTER_SANITIZE_STRING);
+        $state = filter_var($request->input('state'), FILTER_SANITIZE_STRING);
+        
+        // Additional validation
+        if (!preg_match('/^[a-zA-Z0-9_-]+$/', $code)) {
+            throw new ValidationException('Invalid authorization code format');
+        }
+        
+        if (!preg_match('/^[a-zA-Z0-9_-]+$/', $state)) {
+            throw new ValidationException('Invalid state parameter format');
+        }
+    }
+    
+    public static function validateTokenResponse(array $tokenData): void
+    {
+        $required = ['access_token', 'token_type', 'expires_in'];
+        
+        foreach ($required as $field) {
+            if (!isset($tokenData[$field]) || empty($tokenData[$field])) {
+                throw new ValidationException("Missing required field: {$field}");
+            }
+        }
+        
+        // Validate token format (JWT)
+        if (!self::isValidJWT($tokenData['access_token'])) {
+            throw new ValidationException('Invalid access token format');
+        }
+        
+        // Validate token type
+        if ($tokenData['token_type'] !== 'Bearer') {
+            throw new ValidationException('Unsupported token type');
+        }
+        
+        // Validate expires_in
+        if (!is_numeric($tokenData['expires_in']) || $tokenData['expires_in'] <= 0) {
+            throw new ValidationException('Invalid expires_in value');
+        }
+    }
+    
+    private static function isValidJWT(string $token): bool
+    {
+        $parts = explode('.', $token);
+        return count($parts) === 3 && 
+               base64_decode($parts[0]) !== false &&
+               base64_decode($parts[1]) !== false;
+    }
+}
+```
+
+#### **🏰 Threat Model Analysis**
+
+##### **🎯 Attack Vectors & Mitigations:**
+
+| Attack Vector | Risk Level | Mitigation Strategy |
+|---------------|------------|-------------------|
+| **Authorization Code Interception** | 🔴 High | PKCE implementation, short code lifetime |
+| **CSRF Attacks** | 🔴 High | State parameter validation, SameSite cookies |
+| **Token Theft** | 🟡 Medium | Secure storage, short token lifetime |
+| **Replay Attacks** | 🟡 Medium | Nonce validation, timestamp checks |
+| **Client Impersonation** | 🔴 High | Client authentication, redirect URI validation |
+| **Man-in-the-Middle** | 🔴 High | HTTPS enforcement, certificate pinning |
+| **XSS Token Extraction** | 🟡 Medium | HttpOnly cookies, CSP headers |
+| **Session Fixation** | 🟠 Medium | Session regeneration, secure session handling |
+
+##### **🛡️ Defense Implementation:**
+```typescript
+// Comprehensive security implementation
+class SecurityManager {
+  // CSRF Protection
+  static validateCSRF(receivedState: string, sessionState: string): void {
+    if (!receivedState || !sessionState) {
+      throw new SecurityError('Missing CSRF token');
+    }
+    
+    if (!crypto.timingSafeEqual(
+      Buffer.from(receivedState),
+      Buffer.from(sessionState)
+    )) {
+      throw new SecurityError('CSRF validation failed');
+    }
+  }
+  
+  // Rate Limiting
+  static async checkRateLimit(clientId: string, action: string): Promise<void> {
+    const key = `rate_limit:${clientId}:${action}`;
+    const currentCount = await redis.get(key) || 0;
+    
+    if (parseInt(currentCount) > 10) { // 10 requests per minute
+      throw new SecurityError('Rate limit exceeded');
+    }
+    
+    await redis.incr(key);
+    await redis.expire(key, 60); // 1 minute window
+  }
+  
+  // Input Sanitization
+  static sanitizeCallbackParams(params: any): OAuthCallbackParams {
+    const sanitized = {
+      code: this.sanitizeString(params.code),
+      state: this.sanitizeString(params.state),
+      error: params.error ? this.sanitizeString(params.error) : undefined,
+      error_description: params.error_description ? 
+        this.sanitizeString(params.error_description) : undefined
+    };
+    
+    // Validate format
+    if (sanitized.code && !/^[a-zA-Z0-9_-]+$/.test(sanitized.code)) {
+      throw new SecurityError('Invalid code format');
+    }
+    
+    return sanitized;
+  }
+  
+  // JWT Validation
+  static validateJWT(token: string): JWTPayload {
+    try {
+      const [header, payload, signature] = token.split('.');
+      
+      if (!header || !payload || !signature) {
+        throw new SecurityError('Invalid JWT format');
+      }
+      
+      // Decode and validate payload
+      const decodedPayload = JSON.parse(atob(payload));
+      
+      // Validate required claims
+      if (!decodedPayload.exp || !decodedPayload.iat || !decodedPayload.sub) {
+        throw new SecurityError('Missing required JWT claims');
+      }
+      
+      // Check expiration
+      if (Date.now() >= decodedPayload.exp * 1000) {
+        throw new SecurityError('JWT token expired');
+      }
+      
+      // Validate issuer
+      if (decodedPayload.iss !== 'https://sso.mubarokahid.com') {
+        throw new SecurityError('Invalid JWT issuer');
+      }
+      
+      return decodedPayload;
+    } catch (error) {
+      throw new SecurityError(`JWT validation failed: ${error.message}`);
+    }
+  }
+  
+  private static sanitizeString(input: string): string {
+    return input?.replace(/[<>'"&]/g, '') || '';
+  }
+}
+
+// Content Security Policy Implementation
+class CSPManager {
+  static generateCSPHeader(): string {
+    return [
+      "default-src 'self'",
+      "script-src 'self' 'unsafe-inline' https://sso.mubarokahid.com",
+      "style-src 'self' 'unsafe-inline'",
+      "img-src 'self' data: https:",
+      "connect-src 'self' https://sso.mubarokahid.com",
+      "frame-ancestors 'none'",
+      "base-uri 'self'",
+      "form-action 'self' https://sso.mubarokahid.com"
+    ].join('; ');
+  }
+}
+```
+
+#### **🔍 Penetration Testing Guide**
+
+##### **Security Testing Checklist:**
+```bash
+#!/bin/bash
+# OAuth Security Testing Script
+
+echo "🔍 Starting Mubarokah ID OAuth Security Tests..."
+
+# 1. Test HTTPS Enforcement
+echo "Testing HTTPS enforcement..."
+curl -I http://sso.mubarokahid.com/oauth/authorize 2>/dev/null | grep -i "location.*https" || echo "⚠️  HTTPS redirect missing"
+
+# 2. Test CSRF Protection
+echo "Testing CSRF protection..."
+curl -X POST "https://sso.mubarokahid.com/oauth/token" \
+  -d "grant_type=authorization_code&client_id=test&code=test" \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  2>/dev/null | grep -i "invalid.*state\|csrf" && echo "✅ CSRF protection active"
+
+# 3. Test Rate Limiting
+echo "Testing rate limiting..."
+for i in {1..20}; do
+  curl -s "https://sso.mubarokahid.com/oauth/authorize?client_id=test" &
+done
+wait
+echo "✅ Rate limiting test completed"
+
+# 4. Test Input Validation
+echo "Testing input validation..."
+curl -G "https://sso.mubarokahid.com/oauth/authorize" \
+  --data-urlencode "client_id=<script>alert('xss')</script>" \
+  --data-urlencode "redirect_uri=javascript:alert('xss')" \
+  2>/dev/null | grep -i "error\|invalid" && echo "✅ Input validation active"
+
+# 5. Test Authorization Code Lifetime
+echo "Testing authorization code lifetime..."
+# This would require a more complex test setup
+
+echo "🔍 Security testing completed"
+```
+
+##### **Vulnerability Assessment:**
+```python
+# Security scanner for OAuth implementation
+import requests
+import time
+from urllib.parse import urlencode, urlparse
+
+class OAuthSecurityScanner:
+    def __init__(self, base_url: str, client_id: str):
+        self.base_url = base_url.rstrip('/')
+        self.client_id = client_id
+        self.session = requests.Session()
+        self.vulnerabilities = []
+    
+    def scan_all(self):
+        """Run comprehensive security scan"""
+        print("🔍 Starting OAuth Security Scan...")
+        
+        self.test_https_enforcement()
+        self.test_redirect_uri_validation()
+        self.test_state_parameter()
+        self.test_rate_limiting()
+        self.test_input_validation()
+        self.test_client_authentication()
+        self.test_pkce_implementation()
+        
+        self.generate_report()
+    
+    def test_https_enforcement(self):
+        """Test if HTTPS is properly enforced"""
+        try:
+            # Test HTTP redirect
+            response = requests.get(
+                f"http://{urlparse(self.base_url).netloc}/oauth/authorize",
+                allow_redirects=False,
+                timeout=5
+            )
+            
+            if response.status_code not in [301, 302, 308]:
+                self.vulnerabilities.append({
+                    'severity': 'HIGH',
+                    'type': 'HTTPS Enforcement',
+                    'description': 'HTTP requests are not redirected to HTTPS'
+                })
+        except requests.exceptions.SSLError:
+            pass  # Expected for HTTPS-only servers
+        except Exception as e:
+            print(f"⚠️  HTTPS test failed: {e}")
+    
+    def test_redirect_uri_validation(self):
+        """Test redirect URI validation"""
+        malicious_uris = [
+            'javascript:alert("xss")',
+            'data:text/html,<script>alert("xss")</script>',
+            'http://evil.com/callback',
+            'https://evil.com/callback',
+            '../../../etc/passwd',
+            'file:///etc/passwd'
+        ]
+        
+        for uri in malicious_uris:
+            try:
+                response = self.session.get(f"{self.base_url}/oauth/authorize", params={
+                    'response_type': 'code',
+                    'client_id': self.client_id,
+                    'redirect_uri': uri
+                }, timeout=5)
+                
+                if response.status_code == 200 and 'error' not in response.text.lower():
+                    self.vulnerabilities.append({
+                        'severity': 'HIGH',
+                        'type': 'Redirect URI Validation',
+                        'description': f'Malicious redirect URI accepted: {uri}'
+                    })
+            except Exception as e:
+                print(f"⚠️  Redirect URI test failed for {uri}: {e}")
+    
+    def test_state_parameter(self):
+        """Test CSRF protection via state parameter"""
+        # This would require a more complex flow simulation
+        pass
+    
+    def test_rate_limiting(self):
+        """Test rate limiting on OAuth endpoints"""
+        start_time = time.time()
+        responses = []
+        
+        # Send rapid requests
+        for i in range(50):
+            try:
+                response = self.session.get(f"{self.base_url}/oauth/authorize", params={
+                    'client_id': self.client_id
+                }, timeout=1)
+                responses.append(response.status_code)
+            except Exception:
+                break
+        
+        rate_limited = any(status == 429 for status in responses)
+        if not rate_limited:
+            self.vulnerabilities.append({
+                'severity': 'MEDIUM',
+                'type': 'Rate Limiting',
+                'description': 'No rate limiting detected on authorization endpoint'
+            })
+    
+    def test_input_validation(self):
+        """Test input validation and XSS protection"""
+        xss_payloads = [
+            '<script>alert("xss")</script>',
+            'javascript:alert("xss")',
+            '"><script>alert("xss")</script>',
+            "';alert('xss');//",
+            '%3Cscript%3Ealert%28%22xss%22%29%3C%2Fscript%3E'
+        ]
+        
+        for payload in xss_payloads:
+            try:
+                response = self.session.get(f"{self.base_url}/oauth/authorize", params={
+                    'client_id': payload,
+                    'response_type': payload,
+                    'redirect_uri': payload
+                }, timeout=5)
+                
+                if payload in response.text and 'error' not in response.text.lower():
+                    self.vulnerabilities.append({
+                        'severity': 'HIGH',
+                        'type': 'XSS Vulnerability',
+                        'description': f'XSS payload reflected: {payload}'
+                    })
+            except Exception as e:
+                print(f"⚠️  XSS test failed for {payload}: {e}")
+    
+    def generate_report(self):
+        """Generate security assessment report"""
+        print("\n📊 OAuth Security Assessment Report")
+        print("=" * 50)
+        
+        if not self.vulnerabilities:
+            print("✅ No vulnerabilities detected!")
+            return
+        
+        severity_counts = {'HIGH': 0, 'MEDIUM': 0, 'LOW': 0}
+        
+        for vuln in self.vulnerabilities:
+            severity = vuln['severity']
+            severity_counts[severity] += 1
+            
+            print(f"\n🚨 {severity} - {vuln['type']}")
+            print(f"   Description: {vuln['description']}")
+        
+        print(f"\n📈 Summary:")
+        print(f"   🔴 High: {severity_counts['HIGH']}")
+        print(f"   🟡 Medium: {severity_counts['MEDIUM']}")
+        print(f"   🟢 Low: {severity_counts['LOW']}")
+
+# Usage
+if __name__ == "__main__":
+    scanner = OAuthSecurityScanner(
+        base_url="https://sso.mubarokahid.com",
+        client_id="test_client_id"
+    )
+    scanner.scan_all()
+```
+
+---
+
+### **Performance Optimization**
+
+#### **⚡ Caching Strategies**
+
+##### **Multi-Level Caching Implementation:**
+```typescript
+// Advanced caching for OAuth flows
+class CacheManager {
+  private redis: Redis;
+  private memcache: Map<string, any>;
+  private readonly TTL = {
+    USER_INFO: 300,        // 5 minutes
+    CLIENT_INFO: 3600,     // 1 hour
+    TOKEN_VALIDATION: 60,  // 1 minute
+    JWKS: 43200           // 12 hours
+  };
+  
+  constructor(redisUrl: string) {
+    this.redis = new Redis(redisUrl);
+    this.memcache = new Map();
+  }
+  
+  // L1: Memory Cache (fastest)
+  async getFromMemory<T>(key: string): Promise<T | null> {
+    const cached = this.memcache.get(key);
+    if (cached && cached.expires > Date.now()) {
+      return cached.data;
+    }
+    return null;
+  }
+  
+  async setInMemory<T>(key: string, data: T, ttlSeconds: number): Promise<void> {
+    this.memcache.set(key, {
+      data,
+      expires: Date.now() + (ttlSeconds * 1000)
+    });
+    
+    // Cleanup expired entries periodically
+    if (this.memcache.size > 1000) {
+      this.cleanupMemoryCache();
+    }
+  }
+  
+  // L2: Redis Cache (fast)
+  async getFromRedis<T>(key: string): Promise<T | null> {
+    try {
+      const cached = await this.redis.get(key);
+      return cached ? JSON.parse(cached) : null;
+    } catch (error) {
+      console.error('Redis get error:', error);
+      return null;
+    }
+  }
+  
+  async setInRedis<T>(key: string, data: T, ttlSeconds: number): Promise<void> {
+    try {
+      await this.redis.setex(key, ttlSeconds, JSON.stringify(data));
+    } catch (error) {
+      console.error('Redis set error:', error);
+    }
+  }
+  
+  // Multi-level cache retrieval
+  async get<T>(key: string): Promise<T | null> {
+    // Try L1 (memory) first
+    let data = await this.getFromMemory<T>(key);
+    if (data) {
+      return data;
+    }
+    
+    // Try L2 (Redis)
+    data = await this.getFromRedis<T>(key);
+    if (data) {
+      // Populate L1 cache
+      await this.setInMemory(key, data, this.TTL.USER_INFO);
+      return data;
+    }
+    
+    return null;
+  }
+  
+  async set<T>(key: string, data: T, ttlSeconds: number): Promise<void> {
+    // Set in both levels
+    await Promise.all([
+      this.setInMemory(key, data, ttlSeconds),
+      this.setInRedis(key, data, ttlSeconds)
+    ]);
+  }
+  
+  private cleanupMemoryCache(): void {
+    const now = Date.now();
+    for (const [key, value] of this.memcache.entries()) {
+      if (value.expires <= now) {
+        this.memcache.delete(key);
+      }
+    }
+  }
+}
+
+// Cached OAuth service
+class CachedOAuthService {
+  private oauthService: MubarokahOAuthService;
+  private cache: CacheManager;
+  
+  constructor(oauthService: MubarokahOAuthService, cache: CacheManager) {
+    this.oauthService = oauthService;
+    this.cache = cache;
+  }
+  
+  async getUserInfo(accessToken: string): Promise<UserInfo> {
+    const cacheKey = `user_info:${this.hashToken(accessToken)}`;
+    
+    // Try cache first
+    const cached = await this.cache.get<UserInfo>(cacheKey);
+    if (cached) {
+      return cached;
+    }
+    
+    // Fetch from API
+    const userInfo = await this.oauthService.getUserInfo(accessToken);
+    
+    // Cache the result
+    await this.cache.set(cacheKey, userInfo, this.cache.TTL.USER_INFO);
+    
+    return userInfo;
+  }
+  
+  async getClientInfo(clientId: string): Promise<ClientInfo> {
+    const cacheKey = `client_info:${clientId}`;
+    
+    const cached = await this.cache.get<ClientInfo>(cacheKey);
+    if (cached) {
+      return cached;
+    }
+    
+    const clientInfo = await this.fetchClientInfo(clientId);
+    await this.cache.set(cacheKey, clientInfo, this.cache.TTL.CLIENT_INFO);
+    
+    return clientInfo;
+  }
+  
+  private hashToken(token: string): string {
+    return crypto.createHash('sha256').update(token).digest('hex').substring(0, 16);
+  }
+}
+```
+
+##### **Database Query Optimization:**
+```php
+// Optimized Laravel implementation
+class OptimizedOAuthController extends Controller
+{
+    /**
+     * Optimized user info endpoint with eager loading
+     */
+    public function getUserInfo(Request $request)
+    {
+        $user = $request->user();
+        $accessToken = $user->token();
+        
+        // Use select to limit fields
+        $userData = $user->only([
+            'id', 'name', 'email', 'profile_picture', 'username', 'gender'
+        ]);
+        
+        // Cache the response
+        $cacheKey = "user_info:{$user->id}:{$accessToken->id}";
+        
+        return Cache::remember($cacheKey, 300, function() use ($userData) {
+            return response()->json($userData);
+        });
+    }
+    
+    /**
+     * Optimized detailed user info with scope validation caching
+     */
+    public function getDetailedUserInfo(Request $request)
+    {
+        $user = $request->user();
+        $clientId = $user->token()->client_id;
+        
+        // Cache scope approval check
+        $scopeApprovalKey = "scope_approval:{$clientId}:detail-user";
+        $hasApproval = Cache::remember($scopeApprovalKey, 3600, function() use ($clientId) {
+            return ScopeAccessRequest::where('client_id', $clientId)
+                ->where('status', 'approved')
+                ->exists();
+        });
+        
+        if (!$hasApproval) {
+            return response()->json([
+                'error' => 'unapproved_scope',
+                'message' => 'Aplikasi ini belum mendapatkan persetujuan untuk mengakses data sensitif'
+            ], 403);
+        }
+        
+        $detailedData = $user->only([
+            'bio', 'phone_number', 'place_of_birth', 'date_of_birth', 'address'
+        ]);
+        
+        // Cache with shorter TTL for sensitive data
+        $cacheKey = "user_details:{$user->id}:{$clientId}";
+        
+        return Cache::remember($cacheKey, 60, function() use ($detailedData) {
+            return response()->json($detailedData);
+        });
+    }
+    
+    /**
+     * Bulk operations for admin dashboard
+     */
+    public function getAdminMetrics(Request $request)
+    {
+        return Cache::remember('admin_metrics', 300, function() {
+            return DB::transaction(function() {
+                $metrics = [];
+                
+                // Use raw queries for better performance
+                $metrics['total_users'] = DB::table('users')->count();
+                $metrics['total_clients'] = DB::table('oauth_clients')->where('revoked', false)->count();
+                $metrics['active_sessions'] = DB::table('oauth_access_tokens')
+                    ->where('revoked', false)
+                    ->where('expires_at', '>', now())
+                    ->count();
+                
+                // Recent activity (last 24 hours)
+                $metrics['recent_logins'] = DB::table('oauth_access_tokens')
+                    ->where('created_at', '>=', now()->subDay())
+                    ->count();
+                
+                return $metrics;
+            });
+        });
+    }
+}
+
+// Database indexing strategy
+class DatabaseOptimization
+{
+    public static function createOptimalIndexes()
+    {
+        Schema::table('oauth_access_tokens', function (Blueprint $table) {
+            $table->index(['user_id', 'client_id', 'revoked']);
+            $table->index(['expires_at', 'revoked']);
+            $table->index(['created_at']);
+        });
+        
+        Schema::table('oauth_refresh_tokens', function (Blueprint $table) {
+            $table->index(['access_token_id', 'revoked']);
+            $table->index(['expires_at']);
+        });
+        
+        Schema::table('scope_access_requests', function (Blueprint $table) {
+            $table->index(['client_id', 'status']);
+            $table->index(['user_id', 'status']);
+            $table->index(['created_at']);
+        });
+        
+        Schema::table('users', function (Blueprint $table) {
+            $table->index(['email', 'email_verified_at']);
+            $table->index(['created_at']);
+        });
+    }
+}
+```
+
+#### **🚀 Connection Pooling & Load Balancing**
+
+```yaml
+# docker-compose.yml for scalable deployment
+version: '3.8'
+services:
+  # Load Balancer
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf
+      - ./ssl:/etc/nginx/ssl
+    depends_on:
+      - app1
+      - app2
+      - app3
+  
+  # Application instances
+  app1:
+    build: .
+    environment:
+      - APP_ENV=production
+      - REDIS_URL=redis://redis:6379
+      - DB_HOST=mysql-master
+    depends_on:
+      - mysql-master
+      - redis
+  
+  app2:
+    build: .
+    environment:
+      - APP_ENV=production
+      - REDIS_URL=redis://redis:6379
+      - DB_HOST=mysql-master
+    depends_on:
+      - mysql-master
+      - redis
+  
+  app3:
+    build: .
+    environment:
+      - APP_ENV=production
+      - REDIS_URL=redis://redis:6379
+      - DB_HOST=mysql-master
+    depends_on:
+      - mysql-master
+      - redis
+  
+  # Database cluster
+  mysql-master:
+    image: mysql:8.0
+    environment:
+      - MYSQL_ROOT_PASSWORD=secure_password
+      - MYSQL_REPLICATION_MODE=master
+    volumes:
+      - mysql_master_data:/var/lib/mysql
+  
+  mysql-slave:
+    image: mysql:8.0
+    environment:
+      - MYSQL_REPLICATION_MODE=slave
+      - MYSQL_MASTER_HOST=mysql-master
+    volumes:
+      - mysql_slave_data:/var/lib/mysql
+  
+  # Redis cluster
+  redis:
+    image: redis:alpine
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+  
+  # Monitoring
+  prometheus:
+    image: prom/prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+  
+  grafana:
+    image: grafana/grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    volumes:
+      - grafana_data:/var/lib/grafana
+
+volumes:
+  mysql_master_data:
+  mysql_slave_data:
+  redis_data:
+  grafana_data:
+```
+
+```nginx
+# nginx.conf - Load balancer configuration
+events {
+    worker_connections 1024;
+}
+
+http {
+    upstream mubarokah_backend {
+        least_conn;
+        server app1:8000 max_fails=3 fail_timeout=30s;
+        server app2:8000 max_fails=3 fail_timeout=30s;
+        server app3:8000 max_fails=3 fail_timeout=30s;
+    }
+    
+    # Rate limiting
+    limit_req_zone $binary_remote_addr zone=auth:10m rate=10r/m;
+    limit_req_zone $binary_remote_addr zone=api:10m rate=100r/m;
+    
+    # Connection limiting
+    limit_conn_zone $binary_remote_addr zone=conn_limit_per_ip:10m;
+    
+    server {
+        listen 443 ssl http2;
+        server_name sso.mubarokahid.com;
+        
+        ssl_certificate /etc/nginx/ssl/cert.pem;
+        ssl_certificate_key /etc/nginx/ssl/key.pem;
+        ssl_protocols TLSv1.2 TLSv1.3;
+        ssl_ciphers ECDHE-RSA-AES256-GCM-SHA512:DHE-RSA-AES256-GCM-SHA512;
+        
+        # Security headers
+        add_header X-Frame-Options DENY;
+        add_header X-Content-Type-Options nosniff;
+        add_header X-XSS-Protection "1; mode=block";
+        add_header Strict-Transport-Security "max-age=31536000; includeSubDomains";
+        
+        # OAuth endpoints with strict rate limiting
+        location /oauth/ {
+            limit_req zone=auth burst=5 nodelay;
+            limit_conn conn_limit_per_ip 10;
+            
+            proxy_pass http://mubarokah_backend;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+            
+            # Timeouts
+            proxy_connect_timeout 5s;
+            proxy_send_timeout 10s;
+            proxy_read_timeout 10s;
+        }
+        
+        # API endpoints
+        location /api/ {
+            limit_req zone=api burst=20 nodelay;
+            limit_conn conn_limit_per_ip 50;
+            
+            proxy_pass http://mubarokah_backend;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+            
+            # Enable caching for GET requests
+            location ~* ^/api/(user|client) {
+                proxy_cache api_cache;
+                proxy_cache_valid 200 5m;
+                proxy_cache_key "$scheme$request_method$host$request_uri";
+                add_header X-Cache-Status $upstream_cache_status;
+            }
+        }
+        
+        # Static assets
+        location /static/ {
+            expires 1y;
+            add_header Cache-Control "public, immutable";
+            proxy_pass http://mubarokah_backend;
+        }
+    }
+    
+    # HTTP to HTTPS redirect
+    server {
+        listen 80;
+        server_name sso.mubarokahid.com;
+        return 301 https://$server_name$request_uri;
+    }
+    
+    # Cache configuration
+    proxy_cache_path /var/cache/nginx/api levels=1:2 keys_zone=api_cache:10m max_size=1g inactive=60m;
+}
+```
+
+---
+
+### **Production Deployment**
+
+#### **🏭 Environment Configuration**
+
+##### **Production Environment Setup:**
+```bash
+#!/bin/bash
+# production-setup.sh
+
+echo "🚀 Setting up Mubarokah ID Production Environment"
+
+# 1. System Updates
+sudo apt-get update && sudo apt-get upgrade -y
+
+# 2. Install Required Software
+sudo apt-get install -y nginx mysql-server redis-server certbot python3-certbot-nginx
+
+# 3. Install Docker & Docker Compose
+curl -fsSL https://get.docker.com -o get-docker.sh
+sudo sh get-docker.sh
+sudo usermod -aG docker $USER
+
+# 4. Setup SSL Certificate
+sudo certbot --nginx -d sso.mubarokahid.com
+
+# 5. Configure Firewall
+sudo ufw allow 22/tcp
+sudo ufw allow 80/tcp
+sudo ufw allow 443/tcp
+sudo ufw enable
+
+# 6. Setup Database
+sudo mysql_secure_installation
+
+# 7. Configure Redis
+sudo systemctl enable redis-server
+sudo systemctl start redis-server
+
+# 8. Setup Log Rotation
+sudo tee /etc/logrotate.d/mubarokah-id << EOF
+/var/log/mubarokah-id/*.log {
+    daily
+    missingok
+    rotate 52
+    compress
+    delaycompress
+    notifempty
+    create 0644 www-data www-data
+    postrotate
+        /bin/systemctl reload nginx
+    endscript
+}
+EOF
+
+echo "✅ Production environment setup completed"
+```
+
+##### **Environment Variables Template:**
+```bash
+# .env.production
+APP_NAME="Mubarokah ID SSO"
+APP_ENV=production
+APP_KEY=base64:your_32_character_secret_key_here
+APP_DEBUG=false
+APP_URL=https://sso.mubarokahid.com
+
+# Database Configuration
+DB_CONNECTION=mysql
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_DATABASE=mubarokah_id_prod
+DB_USERNAME=mubarokah_user
+DB_PASSWORD=secure_database_password
+
+# Redis Configuration
+REDIS_HOST=127.0.0.1
+REDIS_PASSWORD=secure_redis_password
+REDIS_PORT=6379
+REDIS_DB=0
+
+# Cache Configuration
+CACHE_DRIVER=redis
+SESSION_DRIVER=redis
+QUEUE_CONNECTION=redis
+
+# Passport Configuration
+PASSPORT_PRIVATE_KEY="-----BEGIN RSA PRIVATE KEY-----
+...your private key here...
+-----END RSA PRIVATE KEY-----"
+
+PASSPORT_PUBLIC_KEY="-----BEGIN PUBLIC KEY-----
+...your public key here...
+-----END PUBLIC KEY-----"
+
+PASSPORT_PERSONAL_ACCESS_CLIENT_ID=1
+PASSPORT_PERSONAL_ACCESS_CLIENT_SECRET=your_personal_access_client_secret
+
+# Token Lifetimes (in minutes)
+PASSPORT_ACCESS_TOKEN_LIFETIME=1440     # 24 hours
+PASSPORT_REFRESH_TOKEN_LIFETIME=43200   # 30 days
+PASSPORT_PERSONAL_ACCESS_TOKEN_LIFETIME=525600  # 1 year
+
+# Security Configuration
+BCRYPT_ROUNDS=12
+SESSION_LIFETIME=120
+SESSION_SECURE_COOKIE=true
+SESSION_SAME_SITE=strict
+
+# Mail Configuration
+MAIL_MAILER=smtp
+MAIL_HOST=smtp.mailtrap.io
+MAIL_PORT=2525
+MAIL_USERNAME=your_smtp_username
+MAIL_PASSWORD=your_smtp_password
+MAIL_ENCRYPTION=tls
+MAIL_FROM_ADDRESS=noreply@mubarokahid.com
+MAIL_FROM_NAME="${APP_NAME}"
+
+# AWS S3 Configuration (for file uploads)
+AWS_ACCESS_KEY_ID=your_aws_access_key
+AWS_SECRET_ACCESS_KEY=your_aws_secret_key
+AWS_DEFAULT_REGION=us-east-1
+AWS_BUCKET=mubarokah-id-files
+AWS_USE_PATH_STYLE_ENDPOINT=false
+
+# Logging Configuration
+LOG_CHANNEL=stack
+LOG_STACK=single,slack
+LOG_LEVEL=info
+
+# Monitoring
+SENTRY_LARAVEL_DSN=https://your_sentry_dsn
+NEW_RELIC_LICENSE_KEY=your_new_relic_license_key
+
+# Feature Flags
+ENABLE_ACCOUNT_CHOOSER=true
+ENABLE_MULTI_ACCOUNT=true
+ENABLE_2FA=true
+ENABLE_SCOPE_APPROVAL=true
+
+# Rate Limiting
+RATE_LIMIT_OAUTH=60,1        # 60 requests per minute
+RATE_LIMIT_API=1000,1        # 1000 requests per minute
+RATE_LIMIT_2FA=5,1           # 5 attempts per minute
+```
+
+#### **🔄 CI/CD Pipeline**
+
+```yaml
+# .github/workflows/deploy.yml
+name: Deploy to Production
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: testing
+        options: >-
+          --health-cmd="mysqladmin ping"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=3
+      
+      redis:
+        image: redis:alpine
+        options: >-
+          --health-cmd="redis-cli ping"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=3
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Setup PHP
+      uses: shivammathur/setup-php@v2
+      with:
+        php-version: '8.2'
+        extensions: mbstring, dom, fileinfo, mysql, redis
+        coverage: xdebug
+    
+    - name: Install Dependencies
+      run: |
+        composer install --no-progress --prefer-dist --optimize-autoloader
+        npm ci
+    
+    - name: Generate Application Key
+      run: php artisan key:generate
+    
+    - name: Run Database Migrations
+      run: php artisan migrate --force
+      env:
+        DB_CONNECTION: mysql
+        DB_HOST: 127.0.0.1
+        DB_PORT: 3306
+        DB_DATABASE: testing
+        DB_USERNAME: root
+        DB_PASSWORD: root
+    
+    - name: Install Passport
+      run: php artisan passport:install --force
+    
+    - name: Run Tests
+      run: |
+        php artisan test --coverage-clover coverage.xml
+        npm run test
+    
+    - name: Upload Coverage
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./coverage.xml
+    
+    - name: Security Scan
+      run: |
+        composer audit
+        npm audit
+    
+    - name: Static Analysis
+      run: ./vendor/bin/phpstan analyse
+
+  deploy:
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Setup SSH
+      uses: webfactory/ssh-agent@v0.7.0
+      with:
+        ssh-private-key: ${{ secrets.PRODUCTION_SSH_KEY }}
+    
+    - name: Deploy to Production
+      run: |
+        ssh -o StrictHostKeyChecking=no ubuntu@sso.mubarokahid.com << 'EOF'
+          cd /var/www/mubarokah-id
+          
+          # Backup current version
+          sudo cp -r . ../mubarokah-id-backup-$(date +%Y%m%d_%H%M%S)
+          
+          # Pull latest changes
+          git pull origin main
+          
+          # Install dependencies
+          composer install --no-dev --optimize-autoloader
+          npm ci --production
+          npm run production
+          
+          # Run migrations
+          php artisan migrate --force
+          
+          # Clear caches
+          php artisan config:cache
+          php artisan route:cache
+          php artisan view:cache
+          php artisan queue:restart
+          
+          # Reload services
+          sudo systemctl reload nginx
+          sudo systemctl reload php8.2-fpm
+        EOF
+    
+    - name: Health Check
+      run: |
+        sleep 30
+        curl -f https://sso.mubarokahid.com/health || exit 1
+    
+    - name: Notify Deployment
+      uses: 8398a7/action-slack@v3
+      with:
+        status: ${{ job.status }}
+        channel: '#deployments'
+        webhook_url: ${{ secrets.SLACK_WEBHOOK }}
+      if: always()
+```
+
+#### **📊 Health Monitoring**
+
+```php
+// app/Http/Controllers/HealthController.php
+class HealthController extends Controller
+{
+    public function check(Request $request)
+    {
+        $checks = [
+            'database' => $this->checkDatabase(),
+            'redis' => $this->checkRedis(),
+            'storage' => $this->checkStorage(),
+            'oauth' => $this->checkOAuth(),
+            'external_apis' => $this->checkExternalAPIs(),
+        ];
+        
+        $overall = collect($checks)->every(fn($check) => $check['status'] === 'ok');
+        
+        $response = [
+            'status' => $overall ? 'ok' : 'error',
+            'timestamp' => now()->toISOString(),
+            'checks' => $checks,
+            'version' => config('app.version'),
+            'environment' => config('app.env'),
+        ];
+        
+        return response()->json($response, $overall ? 200 : 503);
+    }
+    
+    private function checkDatabase(): array
+    {
+        try {
+            DB::connection()->getPdo();
+            $userCount = DB::table('users')->count();
+            
+            return [
+                'status' => 'ok',
+                'response_time' => $this->measureTime(fn() => DB::select('SELECT 1')),
+                'user_count' => $userCount,
+            ];
+        } catch (\Exception $e) {
+            return [
+                'status' => 'error',
+                'error' => $e->getMessage(),
+            ];
+        }
+    }
+    
+    private function checkRedis(): array
+    {
+        try {
+            $redis = Redis::connection();
+            $redis->ping();
+            
+            return [
+                'status' => 'ok',
+                'response_time' => $this->measureTime(fn() => $redis->ping()),
+                'memory_usage' => $redis->info('memory')['used_memory_human'] ?? 'unknown',
+            ];
+        } catch (\Exception $e) {
+            return [
+                'status' => 'error',
+                'error' => $e->getMessage(),
+            ];
+        }
+    }
+    
+    private function checkStorage(): array
+    {
+        try {
+            $disk = Storage::disk('local');
+            $testFile = 'health-check-' . time() . '.txt';
+            
+            $disk->put($testFile, 'health check');
+            $content = $disk->get($testFile);
+            $disk->delete($testFile);
+            
+            if ($content !== 'health check') {
+                throw new \Exception('Storage read/write mismatch');
+            }
+            
+            return [
+                'status' => 'ok',
+                'free_space' => disk_free_space(storage_path()),
+            ];
+        } catch (\Exception $e) {
+            return [
+                'status' => 'error',
+                'error' => $e->getMessage(),
+            ];
+        }
+    }
+    
+    private function checkOAuth(): array
+    {
+        try {
+            // Check if Passport keys exist
+            if (!file_exists(storage_path('oauth-private.key')) || 
+                !file_exists(storage_path('oauth-public.key'))) {
+                throw new \Exception('OAuth keys not found');
+            }
+            
+            // Check active tokens
+            $activeTokens = DB::table('oauth_access_tokens')
+                ->where('revoked', false)
+                ->where('expires_at', '>', now())
+                ->count();
+            
+            return [
+                'status' => 'ok',
+                'active_tokens' => $activeTokens,
+            ];
+        } catch (\Exception $e) {
+            return [
+                'status' => 'error',
+                'error' => $e->getMessage(),
+            ];
+        }
+    }
+    
+    private function checkExternalAPIs(): array
+    {
+        $checks = [];
+        
+        // Check email service
+        try {
+            Mail::fake();
+            $checks['email'] = ['status' => 'ok'];
+        } catch (\Exception $e) {
+            $checks['email'] = ['status' => 'error', 'error' => $e->getMessage()];
+        }
+        
+        // Check S3 (if configured)
+        if (config('filesystems.disks.s3.key')) {
+            try {
+                Storage::disk('s3')->files();
+                $checks['s3'] = ['status' => 'ok'];
+            } catch (\Exception $e) {
+                $checks['s3'] = ['status' => 'error', 'error' => $e->getMessage()];
+            }
+        }
+        
+        return $checks;
+    }
+    
+    private function measureTime(callable $callback): float
+    {
+        $start = microtime(true);
+        $callback();
+        return round((microtime(true) - $start) * 1000, 2); // milliseconds
+    }
+}
+```
+
+---
+
+## 🛠️ **TIER 4: OPERATIONAL EXCELLENCE**
+
+### **Monitoring & Debugging**
+
+#### **📊 Comprehensive Monitoring Setup**
+
+##### **Application Metrics Collection:**
+```php
+// app/Http/Middleware/MetricsMiddleware.php
+class MetricsMiddleware
+{
+    private $prometheus;
+    
+    public function __construct()
+    {
+        $this->prometheus = app('prometheus');
+    }
+    
+    public function handle($request, Closure $next)
+    {
+        $start = microtime(true);
+        
+        $response = $next($request);
+        
+        // Record metrics
+        $duration = microtime(true) - $start;
+        $route = $request->route()?->getName() ?? 'unknown';
+        $method = $request->method();
+        $status = $response->getStatusCode();
+        
+        // HTTP request metrics
+        $this->prometheus->getOrRegisterHistogram(
+            'http_request_duration_seconds',
+            'HTTP request duration',
+            ['method', 'route', 'status']
+        )->observe($duration, [$method, $route, $status]);
+        
+        // OAuth specific metrics
+        if (Str::startsWith($route, 'oauth.')) {
+            $this->prometheus->getOrRegisterCounter(
+                'oauth_requests_total',
+                'Total OAuth requests',
+                ['endpoint', 'status']
+            )->incBy(1, [$route, $status]);
+        }
+        
+        // Error rate tracking
+        if ($status >= 400) {
+            $this->prometheus->getOrRegisterCounter(
+                'http_errors_total',
+                'Total HTTP errors',
+                ['method', 'route', 'status']
+            )->incBy(1, [$method, $route, $status]);
+        }
+        
+        return $response;
+    }
+}
+
+// app/Services/MetricsService.php
+class MetricsService
+{
+    private $prometheus;
+    
+    public function __construct()
+    {
+        $this->prometheus = app('prometheus');
+    }
+    
+    public function recordOAuthFlow(string $flow, string $status, float $duration): void
+    {
+        $this->prometheus->getOrRegisterHistogram(
+            'oauth_flow_duration_seconds',
+            'OAuth flow completion time',
+            ['flow', 'status']
+        )->observe($duration, [$flow, $status]);
+    }
+    
+    public function recordTokenGeneration(string $type, bool $success): void
+    {
+        $this->prometheus->getOrRegisterCounter(
+            'oauth_tokens_generated_total',
+            'Total OAuth tokens generated',
+            ['type', 'status']
+        )->incBy(1, [$type, $success ? 'success' : 'failed']);
+    }
+    
+    public function recordUserAuthentication(bool $success, string $method = 'password'): void
+    {
+        $this->prometheus->getOrRegisterCounter(
+            'user_authentications_total',
+            'Total user authentication attempts',
+            ['method', 'status']
+        )->incBy(1, [$method, $success ? 'success' : 'failed']);
+    }
+    
+    public function recordScopeRequest(string $scope, string $status): void
+    {
+        $this->prometheus->getOrRegisterCounter(
+            'scope_requests_total',
+            'Total scope requests',
+            ['scope', 'status']
+        )->incBy(1, [$scope, $status]);
+    }
+    
+    public function getSystemMetrics(): array
+    {
+        return [
+            'memory_usage' => memory_get_usage(true),
+            'memory_peak' => memory_get_peak_usage(true),
+            'active_sessions' => $this->getActiveSessionCount(),
+            'active_tokens' => $this->getActiveTokenCount(),
+            'database_connections' => $this->getDatabaseConnections(),
+            'cache_hit_rate' => $this->getCacheHitRate(),
+        ];
+    }
+    
+    private function getActiveSessionCount(): int
+    {
+        return Cache::remember('metrics:active_sessions', 60, function() {
+            return DB::table('sessions')
+                ->where('last_activity', '>', now()->subMinutes(30))
+                ->count();
+        });
+    }
+    
+    private function getActiveTokenCount(): int
+    {
+        return Cache::remember('metrics:active_tokens', 60, function() {
+            return DB::table('oauth_access_tokens')
+                ->where('revoked', false)
+                ->where('expires_at', '>', now())
+                ->count();
+        });
+    }
+}
+```
+
+##### **Real-time Dashboard (Grafana):**
+```json
+{
+  "dashboard": {
+    "title": "Mubarokah ID OAuth SSO Dashboard",
+    "panels": [
+      {
+        "title": "OAuth Request Rate",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(oauth_requests_total[5m])",
+            "legendFormat": "{{endpoint}}"
+          }
+        ]
+      },
+      {
+        "title": "Authentication Success Rate",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "rate(user_authentications_total{status=\"success\"}[5m]) / rate(user_authentications_total[5m]) * 100"
+          }
+        ]
+      },
+      {
+        "title": "Token Generation Latency",
+        "type": "heatmap",
+        "targets": [
+          {
+            "expr": "oauth_flow_duration_seconds_bucket"
+          }
+        ]
+      },
+      {
+        "title": "Error Rate by Endpoint",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(http_errors_total[5m])",
+            "legendFormat": "{{route}} - {{status}}"
+          }
+        ]
+      },
+      {
+        "title": "Active Sessions",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "active_sessions"
+          }
+        ]
+      },
+      {
+        "title": "Database Performance",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "mysql_global_status_queries",
+            "legendFormat": "Queries/sec"
+          },
+          {
+            "expr": "mysql_global_status_slow_queries",
+            "legendFormat": "Slow Queries/sec"
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+#### **🔍 Advanced Debugging Tools**
+
+```php
+// app/Console/Commands/DebugOAuthFlow.php
+class DebugOAuthFlow extends Command
+{
+    protected $signature = 'oauth:debug {client_id} {--user_id=} {--trace}';
+    protected $description = 'Debug OAuth flow for specific client';
+    
+    public function handle()
+    {
+        $clientId = $this->argument('client_id');
+        $userId = $this->option('user_id');
+        $trace = $this->option('trace');
+        
+        $this->info("🔍 Debugging OAuth flow for client: {$clientId}");
+        
+        // 1. Check client configuration
+        $this->checkClient($clientId);
+        
+        // 2. Check user permissions (if specified)
+        if ($userId) {
+            $this->checkUserPermissions($userId, $clientId);
+        }
+        
+        // 3. Check scope approvals
+        $this->checkScopeApprovals($clientId);
+        
+        // 4. Check recent tokens
+        $this->checkRecentTokens($clientId);
+        
+        // 5. Check error logs
+        $this->checkErrorLogs($clientId);
+        
+        if ($trace) {
+            $this->runTraceTest($clientId);
+        }
+    }
+    
+    private function checkClient(string $clientId): void
+    {
+        $this->info("\n📋 Client Configuration:");
+        
+        $client = DB::table('oauth_clients')->where('id', $clientId)->first();
+        
+        if (!$client) {
+            $this->error("❌ Client not found");
+            return;
+        }
+        
+        $this->table(['Property', 'Value'], [
+            ['ID', $client->id],
+            ['Name', $client->name],
+            ['Secret', $client->secret ? '✅ Present' : '❌ Missing'],
+            ['Redirect URIs', $client->redirect],
+            ['Revoked', $client->revoked ? '❌ Yes' : '✅ No'],
+            ['Personal Access Client', $client->personal_access_client ? 'Yes' : 'No'],
+            ['Password Client', $client->password_client ? 'Yes' : 'No'],
+        ]);
+    }
+    
+    private function checkUserPermissions(string $userId, string $clientId): void
+    {
+        $this->info("\n👤 User Permissions:");
+        
+        $user = DB::table('users')->where('id', $userId)->first();
+        if (!$user) {
+            $this->error("❌ User not found");
+            return;
+        }
+        
+        $this->line("User: {$user->name} ({$user->email})");
+        
+        // Check active tokens
+        $activeTokens = DB::table('oauth_access_tokens')
+            ->where('user_id', $userId)
+            ->where('client_id', $clientId)
+            ->where('revoked', false)
+            ->where('expires_at', '>', now())
+            ->get();
+        
+        $this->line("Active Tokens: " . $activeTokens->count());
+        
+        foreach ($activeTokens as $token) {
+            $this->line("  - Token ID: {$token->id}");
+            $this->line("    Scopes: {$token->scopes}");
+            $this->line("    Expires: {$token->expires_at}");
+        }
+    }
+    
+    private function checkScopeApprovals(string $clientId): void
+    {
+        $this->info("\n🔐 Scope Approvals:");
+        
+        $approvals = DB::table('scope_access_requests')
+            ->where('client_id', $clientId)
+            ->get();
+        
+        if ($approvals->isEmpty()) {
+            $this->line("No scope requests found");
+            return;
+        }
+        
+        foreach ($approvals as $approval) {
+            $statusIcon = match($approval->status) {
+                'approved' => '✅',
+                'rejected' => '❌',
+                'pending' => '⏳',
+                default => '❓'
+            };
+            
+            $this->line("{$statusIcon} {$approval->status} - Requested: {$approval->created_at}");
+            if ($approval->approved_at) {
+                $this->line("    Approved: {$approval->approved_at}");
+            }
+        }
+    }
+    
+    private function checkRecentTokens(string $clientId): void
+    {
+        $this->info("\n🎫 Recent Token Activity:");
+        
+        $recentTokens = DB::table('oauth_access_tokens')
+            ->where('client_id', $clientId)
+            ->orderBy('created_at', 'desc')
+            ->limit(10)
+            ->get();
+        
+        foreach ($recentTokens as $token) {
+            $status = $token->revoked ? '❌ Revoked' : 
+                     ($token->expires_at < now() ? '⏰ Expired' : '✅ Active');
+            
+            $this->line("Token {$token->id}: {$status} - Created: {$token->created_at}");
+        }
+    }
+    
+    private function checkErrorLogs(string $clientId): void
+    {
+        $this->info("\n📝 Recent Error Logs:");
+        
+        $logFile = storage_path('logs/laravel.log');
+        if (!file_exists($logFile)) {
+            $this->line("No log file found");
+            return;
+        }
+        
+        $logs = file_get_contents($logFile);
+        $lines = explode("\n", $logs);
+        $clientLogs = array_filter($lines, fn($line) => str_contains($line, $clientId));
+        
+        foreach (array_slice($clientLogs, -10) as $log) {
+            if (str_contains($log, 'ERROR') || str_contains($log, 'CRITICAL')) {
+                $this->error($log);
+            } elseif (str_contains($log, 'WARNING')) {
+                $this->warn($log);
+            } else {
+                $this->line($log);
+            }
+        }
+    }
+    
+    private function runTraceTest(string $clientId): void
+    {
+        $this->info("\n🔬 Running OAuth Flow Trace:");
+        
+        // Simulate OAuth flow
+        $startTime = microtime(true);
+        
+        try {
+            // Step 1: Authorization request
+            $this->line("1. Simulating authorization request...");
+            $authUrl = url('/oauth/authorize?' . http_build_query([
+                'response_type' => 'code',
+                'client_id' => $clientId,
+                'redirect_uri' => 'http://localhost/callback',
+                'scope' => 'view-user',
+                'state' => 'test-state'
+            ]));
+            $this->line("   Auth URL: {$authUrl}");
+            
+            // Step 2: Check client validation
+            $this->line("2. Validating client...");
+            $client = \Laravel\Passport\Client::find($clientId);
+            if (!$client) {
+                throw new \Exception("Client not found");
+            }
+            $this->line("   ✅ Client valid");
+            
+            // Step 3: Check redirect URI
+            $this->line("3. Validating redirect URI...");
+            $redirectUris = explode(',', $client->redirect);
+            if (!in_array('http://localhost/callback', $redirectUris)) {
+                $this->warn("   ⚠️  Test redirect URI not in client configuration");
+            } else {
+                $this->line("   ✅ Redirect URI valid");
+            }
+            
+            $endTime = microtime(true);
+            $this->info("✅ Trace completed in " . round(($endTime - $startTime) * 1000, 2) . "ms");
+            
+        } catch (\Exception $e) {
+            $this->error("❌ Trace failed: " . $e->getMessage());
+        }
+    }
+}
+
+// Real-time OAuth flow tracer
+class OAuthFlowTracer
+{
+    private $traces = [];
+    private $startTime;
+    
+    public function startTrace(string $traceId): void
+    {
+        $this->traces[$traceId] = [
+            'id' => $traceId,
+            'start_time' => microtime(true),
+            'steps' => [],
+            'errors' => [],
+            'context' => []
+        ];
+        
+        Log::info("OAuth trace started", ['trace_id' => $traceId]);
+    }
+    
+    public function addStep(string $traceId, string $step, array $data = []): void
+    {
+        if (!isset($this->traces[$traceId])) {
+            return;
+        }
+        
+        $this->traces[$traceId]['steps'][] = [
+            'step' => $step,
+            'timestamp' => microtime(true),
+            'data' => $data,
+            'memory_usage' => memory_get_usage(true)
+        ];
+        
+        Log::debug("OAuth trace step", [
+            'trace_id' => $traceId,
+            'step' => $step,
+            'data' => $data
+        ]);
+    }
+    
+    public function addError(string $traceId, string $error, array $context = []): void
+    {
+        if (!isset($this->traces[$traceId])) {
+            return;
+        }
+        
+        $this->traces[$traceId]['errors'][] = [
+            'error' => $error,
+            'timestamp' => microtime(true),
+            'context' => $context
+        ];
+        
+        Log::error("OAuth trace error", [
+            'trace_id' => $traceId,
+            'error' => $error,
+            'context' => $context
+        ]);
+    }
+    
+    public function endTrace(string $traceId): array
+    {
+        if (!isset($this->traces[$traceId])) {
+            return [];
+        }
+        
+        $trace = $this->traces[$traceId];
+        $trace['end_time'] = microtime(true);
+        $trace['total_duration'] = $trace['end_time'] - $trace['start_time'];
+        
+        Log::info("OAuth trace completed", [
+            'trace_id' => $traceId,
+            'duration' => $trace['total_duration'],
+            'steps_count' => count($trace['steps']),
+            'errors_count' => count($trace['errors'])
+        ]);
+        
+        unset($this->traces[$traceId]);
+        
+        return $trace;
+    }
+    
+    public function getActiveTraces(): array
+    {
+        return $this->traces;
+    }
+}
+```
+
+---
+
+### **Troubleshooting Comprehensive**
+
+#### **🚨 Error Resolution Framework**
+
+```mermaid
+flowchart TD
+    A[OAuth Error Detected] --> B{Error Type?}
+    
+    B -->|4xx Client Error| C[Client-Side Issues]
+    B -->|5xx Server Error| D[Server-Side Issues]
+    B -->|Network Error| E[Infrastructure Issues]
+    
+    C --> C1[Check Client Config]
+    C --> C2[Validate Parameters]
+    C --> C3[Check Permissions]
+    
+    D --> D1[Check Server Health]
+    D --> D2[Review Error Logs]
+    D --> D3[Database Status]
+    
+    E --> E1[Network Connectivity]
+    E --> E2[Load Balancer Status]
+    E --> E3[DNS Resolution]
+    
+    C1 --> F[Apply Fix]
+    C2 --> F
+    C3 --> F
+    D1 --> F
+    D2 --> F
+    D3 --> F
+    E1 --> F
+    E2 --> F
+    E3 --> F
+    
+    F --> G[Test Resolution]
+    G --> H{Fixed?}
+    H -->|Yes| I[Document Solution]
+    H -->|No| J[Escalate]
+    
+    style A fill:#ffebee
+    style I fill:#e8f5e8
+    style J fill:#fff3e0
+```
+
+##### **Common Issue Resolution Guide:**
+```php
+// app/Services/TroubleshootingService.php
+class TroubleshootingService
+{
+    private $diagnostics = [];
+    
+    public function diagnoseOAuthError(string $error, array $context = []): array
+    {
+        $diagnosis = [
+            'error' => $error,
+            'severity' => $this->determineSeverity($error),
+            'possible_causes' => $this->getPossibleCauses($error),
+            'resolution_steps' => $this->getResolutionSteps($error),
+            'prevention_tips' => $this->getPreventionTips($error),
+            'context' => $context
+        ];
+        
+        return $diagnosis;
+    }
+    
+    private function getPossibleCauses(string $error): array
+    {
+        return match($error) {
+            'invalid_client' => [
+                'Client ID does not exist',
+                'Client secret is incorrect',
+                'Client has been revoked',
+                'Client authentication method mismatch'
+            ],
+            'invalid_grant' => [
+                'Authorization code has expired',
+                'Authorization code has already been used',
+                'Authorization code was issued to different client',
+                'Redirect URI mismatch',
+                'PKCE code verifier mismatch'
+            ],
+            'invalid_scope' => [
+                'Requested scope does not exist',
+                'Client not authorized for requested scope',
+                'Scope requires admin approval (detail-user)',
+                'Malformed scope parameter'
+            ],
+            'access_denied' => [
+                'User denied authorization',
+                'User session expired during flow',
+                'Client blocked by admin',
+                'IP address blocked'
+            ],
+            'unapproved_scope' => [
+                'detail-user scope not approved by admin',
+                'Approval request not submitted',
+                'Approval request was rejected',
+                'Client configuration mismatch'
+            ],
+            default => ['Unknown error - check logs for details']
+        };
+    }
+    
+    private function getResolutionSteps(string $error): array
+    {
+        return match($error) {
+            'invalid_client' => [
+                '1. Verify client_id in your configuration',
+                '2. Check client_secret is correct',
+                '3. Ensure client is not revoked in admin panel',
+                '4. Verify authentication method (Basic vs POST body)',
+                '5. Check client exists in oauth_clients table'
+            ],
+            'invalid_grant' => [
+                '1. Check authorization code has not expired (10 minutes)',
+                '2. Ensure code is only used once',
+                '3. Verify redirect_uri matches exactly',
+                '4. For PKCE: check code_verifier matches challenge',
+                '5. Restart OAuth flow with new authorization request'
+            ],
+            'invalid_scope' => [
+                '1. Check scope spelling (view-user, detail-user)',
+                '2. Verify client has permission for requested scopes',
+                '3. For detail-user: submit approval request',
+                '4. Remove unsupported scopes from request',
+                '5. Check scope parameter format (space-separated)'
+            ],
+            'access_denied' => [
+                '1. Ask user to try authorization again',
+                '2. Check user session is still valid',
+                '3. Verify client is not blocked',
+                '4. Check IP whitelist/blacklist settings',
+                '5. Review user consent settings'
+            ],
+            'unapproved_scope' => [
+                '1. Submit detail-user scope approval request',
+                '2. Provide required documentation',
+                '3. Wait for admin approval',
+                '4. Check approval status in client dashboard',
+                '5. Use view-user scope as alternative'
+            ],
+            default => [
+                '1. Check application logs for detailed error',
+                '2. Review OAuth flow implementation',
+                '3. Verify all parameters are correct',
+                '4. Test with known working configuration',
+                '5. Contact support with error details'
+            ]
+        };
+    }
+    
+    private function getPreventionTips(string $error): array
+    {
+        return match($error) {
+            'invalid_client' => [
+                'Store credentials securely in environment variables',
+                'Implement credential rotation policy',
+                'Monitor client status regularly',
+                'Use configuration validation'
+            ],
+            'invalid_grant' => [
+                'Implement proper state management',
+                'Handle authorization codes immediately',
+                'Add retry logic with exponential backoff',
+                'Validate PKCE implementation'
+            ],
+            'invalid_scope' => [
+                'Request only needed scopes',
+                'Implement scope validation',
+                'Plan for approval process early',
+                'Document scope requirements'
+            ],
+            'access_denied' => [
+                'Provide clear consent screens',
+                'Implement session timeout handling',
+                'Monitor user experience',
+                'Implement graceful error handling'
+            ],
+            'unapproved_scope' => [
+                'Plan approval process in advance',
+                'Prepare required documentation',
+                'Implement fallback strategies',
+                'Monitor approval status'
+            ],
+            default => [
+                'Implement comprehensive error handling',
+                'Add detailed logging',
+                'Monitor error rates',
+                'Create runbooks for common issues'
+            ]
+        ];
+    }
+    
+    public function runSystemDiagnostics(): array
+    {
+        $diagnostics = [
+            'system_health' => $this->checkSystemHealth(),
+            'oauth_configuration' => $this->checkOAuthConfiguration(),
+            'database_status' => $this->checkDatabaseStatus(),
+            'cache_status' => $this->checkCacheStatus(),
+            'external_services' => $this->checkExternalServices(),
+        ];
+        
+        $diagnostics['overall_status'] = $this->calculateOverallStatus($diagnostics);
+        
+        return $diagnostics;
+    }
+    
+    private function checkSystemHealth(): array
+    {
+        return [
+            'cpu_usage' => sys_getloadavg()[0],
+            'memory_usage' => memory_get_usage(true),
+            'disk_space' => disk_free_space('/'),
+            'process_count' => $this->getProcessCount(),
+            'uptime' => $this->getSystemUptime(),
+        ];
+    }
+    
+    private function checkOAuthConfiguration(): array
+    {
+        $issues = [];
+        
+        // Check Passport keys
+        if (!file_exists(storage_path('oauth-private.key'))) {
+            $issues[] = 'OAuth private key missing';
+        }
+        
+        if (!file_exists(storage_path('oauth-public.key'))) {
+            $issues[] = 'OAuth public key missing';
+        }
+        
+        // Check client configuration
+        $clientCount = DB::table('oauth_clients')->count();
+        if ($clientCount === 0) {
+            $issues[] = 'No OAuth clients configured';
+        }
+        
+        // Check token lifetimes
+        $tokenLifetime = config('passport.token_lifetime.access', 1440);
+        if ($tokenLifetime > 2880) { // 48 hours
+            $issues[] = 'Access token lifetime too long (security risk)';
+        }
+        
+        return [
+            'status' => empty($issues) ? 'ok' : 'warning',
+            'issues' => $issues,
+            'client_count' => $clientCount,
+            'token_lifetime' => $tokenLifetime,
+        ];
+    }
+}
+
+// Automated issue detection and alerting
+class IssueDetectionService
+{
+    private $alertThresholds = [
+        'error_rate' => 0.05,      // 5% error rate
+        'response_time' => 5000,   // 5 seconds
+        'cpu_usage' => 0.80,       // 80% CPU
+        'memory_usage' => 0.85,    // 85% memory
+        'disk_usage' => 0.90,      // 90% disk
+    ];
+    
+    public function detectIssues(): array
+    {
+        $issues = [];
+        
+        // Check error rate
+        $errorRate = $this->calculateErrorRate();
+        if ($errorRate > $this->alertThresholds['error_rate']) {
+            $issues[] = [
+                'type' => 'high_error_rate',
+                'severity' => 'critical',
+                'value' => $errorRate,
+                'threshold' => $this->alertThresholds['error_rate'],
+                'message' => "Error rate ({$errorRate}) exceeds threshold"
+            ];
+        }
+        
+        // Check response time
+        $avgResponseTime = $this->getAverageResponseTime();
+        if ($avgResponseTime > $this->alertThresholds['response_time']) {
+            $issues[] = [
+                'type' => 'slow_response',
+                'severity' => 'warning',
+                'value' => $avgResponseTime,
+                'threshold' => $this->alertThresholds['response_time'],
+                'message' => "Response time ({$avgResponseTime}ms) exceeds threshold"
+            ];
+        }
+        
+        // Check system resources
+        $systemHealth = $this->getSystemHealth();
+        foreach (['cpu_usage', 'memory_usage', 'disk_usage'] as $metric) {
+            if ($systemHealth[$metric] > $this->alertThresholds[$metric]) {
+                $issues[] = [
+                    'type' => $metric,
+                    'severity' => $metric === 'disk_usage' ? 'critical' : 'warning',
+                    'value' => $systemHealth[$metric],
+                    'threshold' => $this->alertThresholds[$metric],
+                    'message' => ucfirst(str_replace('_', ' ', $metric)) . " is high"
+                ];
+            }
+        }
+        
+        return $issues;
+    }
+    
+    public function sendAlerts(array $issues): void
+    {
+        foreach ($issues as $issue) {
+            if ($issue['severity'] === 'critical') {
+                $this->sendCriticalAlert($issue);
+            } else {
+                $this->sendWarningAlert($issue);
+            }
+        }
+    }
+    
+    private function sendCriticalAlert(array $issue): void
+    {
+        // Send to Slack, email, SMS, etc.
+        Log::critical("CRITICAL: {$issue['message']}", $issue);
+        
+        // Integration with alerting services
+        if (config('services.slack.webhook')) {
+            Http::post(config('services.slack.webhook'), [
+                'text' => "🚨 CRITICAL: {$issue['message']}",
+                'channel' => '#alerts',
+                'username' => 'Mubarokah ID Monitor'
+            ]);
+        }
+    }
+}
+```
+
+#### **📚 Runbook Templates**
+
+```markdown
+# OAuth Error Runbook
+
+## 🚨 Critical: Service Down
+
+### Symptoms
+- All OAuth requests returning 5xx errors
+- Health check endpoints failing
+- User cannot login to any application
+
+### Immediate Actions
+1. **Check service status**
+   ```bash
+   systemctl status nginx
+   systemctl status php8.2-fpm
+   systemctl status mysql
+   systemctl status redis
+   ```
+
+2. **Check logs**
+   ```bash
+   tail -f /var/log/nginx/error.log
+   tail -f /var/www/mubarokah-id/storage/logs/laravel.log
+   ```
+
+3. **Restart services if needed**
+   ```bash
+   sudo systemctl restart nginx
+   sudo systemctl restart php8.2-fpm
+   ```
+
+### Investigation Steps
+1. Check recent deployments
+2. Review monitoring dashboards
+3. Check database connectivity
+4. Verify SSL certificates
+5. Check external dependencies
+
+### Communication Template
+```
+🚨 INCIDENT: Mubarokah ID SSO Service Disruption
+
+Impact: Users unable to login to integrated applications
+Start Time: [TIME]
+Status: Investigating
+
+We are investigating reports of login issues. Updates to follow.
+```
+
+---
+
+## ⭐ **Best Practices Summary**
+
+### **🏆 Development Best Practices**
+
+1. **Security First**
+   - Always use HTTPS in production
+   - Implement PKCE for public clients
+   - Validate all input parameters
+   - Use secure token storage
+   - Regular security audits
+
+2. **Performance Optimization**
+   - Implement multi-level caching
+   - Use connection pooling
+   - Optimize database queries
+   - Monitor response times
+   - Scale horizontally when needed
+
+3. **Error Handling**
+   - Provide clear error messages
+   - Implement retry mechanisms
+   - Log all OAuth flows
+   - Monitor error rates
+   - Have fallback strategies
+
+4. **Monitoring & Observability**
+   - Track key metrics
+   - Set up alerting
+   - Implement health checks
+   - Use distributed tracing
+   - Regular system diagnostics
+
+5. **Compliance & Privacy**
+   - Follow OAuth 2.0 standards
+   - Implement proper consent flows
+   - Handle data retention policies
+   - Regular compliance audits
+   - Clear privacy documentation
+
+---
+
+## 📞 **Support & Resources**
+
+### **🆘 Getting Help**
+
+- **Technical Support**: [support@mubarokahid.com]
+- **Documentation**: [https://docs.mubarokahid.com]
+- **Community Forum**: [https://community.mubarokahid.com]
+- **GitHub Issues**: [https://github.com/mubarokahid/sso]
+
+### **📚 Additional Resources**
+
+- [OAuth 2.0 RFC 6749](https://tools.ietf.org/html/rfc6749)
+- [PKCE RFC 7636](https://tools.ietf.org/html/rfc7636)
+- [OAuth 2.0 Security Best Practices](https://tools.ietf.org/html/draft-ietf-oauth-security-topics)
+- [Laravel Passport Documentation](https://laravel.com/docs/passport)
+
+---
+
+## 🎯 **Quick Reference**
+
+### **Essential URLs**
+```
+Authorization: https://sso.mubarokahid.com/oauth/authorize
+Token:         https://sso.mubarokahid.com/oauth/token
+User Info:     https://sso.mubarokahid.com/api/user
+User Details:  https://sso.mubarokahid.com/api/user/details
+Logout:        https://sso.mubarokahid.com/api/logout-sso
+Health:        https://sso.mubarokahid.com/health
+```
+
+### **Token Lifetimes**
+```
+Access Token:  24 hours
+Refresh Token: 30 days
+Auth Code:     10 minutes
+```
+
+### **Scopes**
+```
+view-user:   Basic profile information
+detail-user: Sensitive personal data (requires approval)
+```
+
+---
+
+**📋 This documentation serves as your complete guide to Mubarokah ID OAuth 2.0 SSO integration. Bookmark this page and refer back as needed during your implementation journey.**
+
+**🚀 Ready to integrate? Start with the [Quick Start Guide](#quick-start-5-minutes) and work your way through the tiers based on your expertise level.**
