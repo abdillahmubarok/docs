@@ -177,11 +177,7 @@ This guide, adapted from the `TroubleshootingService` concept, provides potentia
 -   **`403 Forbidden` (`insufficient_scope`):**
     -   **Cause:** Access token is valid but does not contain the specific scope needed for the requested API resource.
     -   **Resolution:**
-<<<<<<< HEAD
         1.  Verify the API endpoint's required scopes in the [API Reference](../api-reference/oauth/authorize).
-=======
-        1.  Verify the API endpoint's required scopes in the [API Reference](../api-reference/oauth/authorize). <!-- Actual links to specific API pages would be better if they list scopes -->
->>>>>>> e53122889454db5cc7fb2301c5fe2f30682d1cd4
         2.  Ensure your application requested (and was granted) these scopes during the initial OAuth authorization.
         3.  If necessary, the user may need to re-authorize your application, potentially with a `prompt=consent` parameter if you need to ensure they are presented with the scope request again.
 
