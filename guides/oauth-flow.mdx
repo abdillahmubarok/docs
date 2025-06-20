@@ -12,27 +12,48 @@ Mubarokah ID primarily uses the **OAuth 2.0 Authorization Code Grant** for third
 The Authorization Code Grant is the most common and secure OAuth 2.0 flow. It involves exchanging an authorization code for an access token.
 
 ```mermaid
-stateDiagram-v2
-    direction LR
-    [*] --> InitiateAuth: Application Initiates
-    InitiateAuth --> UserRedirected: Redirect user to /oauth/authorize
-    UserRedirected --> UserAuthenticates: User logs in at Mubarokah ID
-    UserAuthenticates --> ConsentScreen: User reviews requested permissions
-    ConsentScreen --> CodeGenerated: User grants consent
-    CodeGenerated --> AppReceivesCode: Mubarokah ID redirects to app with Auth Code
-    AppReceivesCode --> TokenExchange: App exchanges Auth Code for Tokens (server-side)
-    TokenExchange --> TokensValidated: Mubarokah ID issues Access & Refresh Tokens
-    TokensValidated --> ApiAccess: App uses Access Token to call API
-    ApiAccess --> [*]: User session established
-
-    UserAuthenticates --> LoginPage: If not already logged in
-    LoginPage --> UserAuthenticates: Login successful
-
-    ConsentScreen --> AuthDenied: User denies consent
-    AuthDenied --> [*]: Access Denied by User
-
-    TokenExchange --> TokenError: Invalid code/client credentials
-    TokenError --> [*]: Integration Error
+flowchart TD
+    Start([Application Initiates OAuth]) --> Auth[Redirect to /oauth/authorize]
+    
+    subgraph "User Authentication"
+        Auth --> LoggedIn{User Logged In?}
+        LoggedIn -->|No| Login[Login at Mubarokah ID]
+        LoggedIn -->|Yes| Consent[Review Permissions]
+        Login --> Consent
+    end
+    
+    subgraph "Authorization Decision"
+        Consent --> UserDecision{Grant Consent?}
+        UserDecision -->|Yes| AuthCode[Generate Authorization Code]
+        UserDecision -->|No| Denied[Access Denied]
+    end
+    
+    subgraph "Token Exchange"
+        AuthCode --> Redirect[Redirect to App with Code]
+        Redirect --> Exchange[Exchange Code for Tokens]
+        Exchange --> Valid{Valid Credentials?}
+        Valid -->|Yes| Tokens[Issue Access & Refresh Tokens]
+        Valid -->|No| TokenError[Token Exchange Error]
+    end
+    
+    subgraph "API Access"
+        Tokens --> ApiCall[Call API with Access Token]
+        ApiCall --> Success[User Session Established]
+    end
+    
+    %% End states
+    Denied --> End1([End: Access Denied])
+    TokenError --> End2([End: Integration Error])
+    Success --> End3([End: Authentication Complete])
+    
+    %% Styling
+    classDef successPath fill:#d4edda,stroke:#155724,color:#155724
+    classDef errorPath fill:#f8d7da,stroke:#721c24,color:#721c24
+    classDef processPath fill:#e2e3e5,stroke:#383d41,color:#383d41
+    
+    class AuthCode,Tokens,ApiCall,Success,End3 successPath
+    class Denied,TokenError,End1,End2 errorPath
+    class Auth,Login,Consent,Redirect,Exchange processPath
 ```
 
 ### Detailed Step-by-Step Implementation

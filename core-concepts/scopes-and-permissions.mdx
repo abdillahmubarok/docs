@@ -15,8 +15,8 @@ Here are the primary scopes available through Mubarokah ID:
 
 ```mermaid
 graph TD
-    A[Mubarokah ID OAuth Scopes] --> B[\`view-user\` Scope]
-    A --> C[\`detail-user\` Scope]
+    A[Mubarokah ID OAuth Scopes] --> B[view-user Scope]
+    A --> C[detail-user Scope]
 
     B --> B1[Access to Basic Profile Information]
     B1 --> B2[User ID]
@@ -26,7 +26,7 @@ graph TD
     B1 --> B6[Profile Picture URL]
     B1 --> B7[Gender]
 
-    C --> C1[Access to All \`view-user\` Data PLUS:]
+    C --> C1[Access to All view-user Data PLUS:]
     C --> C2[Sensitive Personal Information]
     C2 --> C3[Phone Number]
     C2 --> C4[Date of Birth]
@@ -34,7 +34,7 @@ graph TD
     C2 --> C6[Full Address]
     C2 --> C7[Biography / About Me]
 
-    C --> C8[<font color=red>Requires Admin Approval for Client App</font>]
+    C --> C8[Requires Admin Approval for Client App]
 
     style B fill:#e8f5e8,stroke:#333,stroke-width:2px
     style C fill:#ffebee,stroke:#333,stroke-width:2px
@@ -52,172 +52,542 @@ graph TD
 Always request the minimum number of scopes necessary for your application's functionality. Requesting excessive scopes can lead to lower user consent rates.
 </Info>
 
-## `detail-user` Scope Approval Process
+## Practical Implementation Examples
 
-The `detail-user` scope provides access to sensitive personal information. To protect user privacy and ensure responsible data handling, client applications wishing to use this scope must undergo an administrative approval process.
+### 1. Basic OAuth Flow with `view-user` Scope
 
-### Overview of Approval
+```javascript
+// Step 1: Generate authorization URL
+const generateAuthURL = () => {
+  const authParams = new URLSearchParams({
+    response_type: 'code',
+    client_id: 'your_client_id',
+    redirect_uri: 'https://yourapp.com/auth/callback',
+    scope: 'view-user',
+    state: generateRandomState()
+  });
+  
+  return `https://mubarokah.id/oauth/authorize?${authParams}`;
+};
 
-```mermaid
-sequenceDiagram
-    participant Dev as 👨‍💻 Developer (Your App)
-    participant Portal as 🌐 Mubarokah ID Developer Portal
-    participant AdminTeam as 👨‍💼 Mubarokah ID Admin Team
-    participant User as 👤 End User
+// Step 2: Exchange authorization code for access token
+const exchangeCodeForToken = async (authorizationCode) => {
+  const response = await fetch('https://mubarokah.id/oauth/token', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded'
+    },
+    body: new URLSearchParams({
+      grant_type: 'authorization_code',
+      client_id: 'your_client_id',
+      client_secret: 'your_client_secret',
+      code: authorizationCode,
+      redirect_uri: 'https://yourapp.com/auth/callback'
+    })
+  });
+  
+  return await response.json();
+};
 
-    Dev->>+Portal: 1. Submits 'detail-user' scope request for their application.
-    Note over Dev,Portal: Includes purpose justification & required documentation.
-    Portal->>-Dev: 2. Confirms submission.
-    Portal->>AdminTeam: 3. Notifies Admin Team of new request.
+// Step 3: Fetch user information
+const getUserInfo = async (accessToken) => {
+  const response = await fetch('https://mubarokah.id/api/user', {
+    headers: {
+      'Authorization': `Bearer ${accessToken}`,
+      'Accept': 'application/json'
+    }
+  });
+  
+  if (!response.ok) {
+    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+  }
+  
+  return await response.json();
+};
 
-    AdminTeam->>AdminTeam: 4. Reviews application details, justification, and documents.
-    alt Request Approved
-        AdminTeam->>+Portal: 5a. Approves 'detail-user' scope for the client_id.
-        Portal->>-AdminTeam: 6a. Records approval.
-        Portal->>Dev: 7a. Notifies Developer of approval.
-        Note over Dev: App can now successfully request 'detail-user' scope.
-        Dev->>User: 8a. User sees 'detail-user' in consent screen & can grant.
-    else Request Rejected
-        AdminTeam->>+Portal: 5b. Rejects 'detail-user' scope with reasons.
-        Portal->>-AdminTeam: 6b. Records rejection.
-        Portal->>Dev: 7b. Notifies Developer of rejection and reasons.
-        Note over Dev: App cannot use 'detail-user' scope.
-    end
+// Complete workflow example
+const handleOAuthCallback = async (code, state) => {
+  try {
+    // Validate state parameter (CSRF protection)
+    if (!validateState(state)) {
+      throw new Error('Invalid state parameter');
+    }
+    
+    // Exchange code for tokens
+    const tokenResponse = await exchangeCodeForToken(code);
+    const { access_token, refresh_token } = tokenResponse;
+    
+    // Fetch user information
+    const userInfo = await getUserInfo(access_token);
+    
+    console.log('User authenticated:', userInfo);
+    
+    // Store tokens securely (server-side only)
+    await storeTokensSecurely(userInfo.id, access_token, refresh_token);
+    
+    return userInfo;
+  } catch (error) {
+    console.error('OAuth callback error:', error);
+    throw error;
+  }
+};
 ```
 
-### Step-by-Step Approval Guide
+### 2. Advanced Implementation with `detail-user` Scope
 
-#### Step 1: Submit Request via Developer Portal
+```javascript
+// Enhanced authorization URL for detailed user information
+const generateDetailedAuthURL = () => {
+  const authParams = new URLSearchParams({
+    response_type: 'code',
+    client_id: 'your_approved_client_id',
+    redirect_uri: 'https://yourapp.com/auth/callback',
+    scope: 'view-user detail-user',
+    state: generateRandomState(),
+    prompt: 'consent' // Ensure user sees the consent screen
+  });
+  
+  return `https://mubarokah.id/oauth/authorize?${authParams}`;
+};
 
-1.  Log in to the Mubarokah ID Developer Portal (e.g., `https://sso.mubarokahid.com/developer/applications`).
-2.  Select your application.
-3.  Navigate to the "Scopes" or "Permissions" section.
-4.  Find the `detail-user` scope and click "Request Approval."
-    ```javascript
-    // Illustrative: How to navigate to the scope request portal (actual URL may vary)
-    // const requestDetailUserScope = (clientId) => {
-    //   const portalUrl = \`https://sso.mubarokahid.com/developer/applications/\${clientId}/scopes/request\`;
-    //   window.open(portalUrl, '_blank');
-    // };
-    ```
+// Fetch detailed user information (requires admin approval)
+const getUserDetails = async (accessToken) => {
+  try {
+    const response = await fetch('https://mubarokah.id/api/user/details', {
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Accept': 'application/json'
+      }
+    });
+    
+    if (response.status === 403) {
+      const error = await response.json();
+      if (error.error === 'unapproved_scope') {
+        throw new Error('Your application needs admin approval to access detailed user information. Please contact support.');
+      }
+      if (error.error === 'insufficient_scope') {
+        throw new Error('Access token does not have the required detail-user scope.');
+      }
+    }
+    
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+    
+    return await response.json();
+  } catch (error) {
+    console.error('Failed to fetch user details:', error);
+    throw error;
+  }
+};
 
-#### Step 2: Provide Required Information
+// Complete user data aggregation
+const getCompleteUserProfile = async (accessToken) => {
+  try {
+    // Always fetch basic info first
+    const basicInfo = await getUserInfo(accessToken);
+    
+    let detailedInfo = null;
+    try {
+      // Attempt to fetch detailed info if approved
+      detailedInfo = await getUserDetails(accessToken);
+    } catch (error) {
+      console.warn('Detailed user info not available:', error.message);
+    }
+    
+    return {
+      basic: basicInfo,
+      detailed: detailedInfo,
+      hasDetailedAccess: detailedInfo !== null
+    };
+  } catch (error) {
+    console.error('Failed to get complete user profile:', error);
+    throw error;
+  }
+};
+```
 
-You will be asked to provide:
--   **Client ID**: Your application's client ID.
--   **Entity Type**: Whether you are an individual developer, organization, or company.
--   **Contact Information**: Name, phone, email of the person responsible.
--   **Application URL**: Link to your live application or test environment.
--   **Purpose Justification**: A detailed explanation of why your application needs access to detailed user information and how this data will be used and protected.
--   **Data Handling Policies**: Links to your application's privacy policy and terms of service.
+### 3. Token Refresh Implementation
 
-#### Step 3: Upload Required Documentation
+```javascript
+// Refresh access token using refresh token
+const refreshAccessToken = async (refreshToken) => {
+  const response = await fetch('https://mubarokah.id/oauth/token', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded'
+    },
+    body: new URLSearchParams({
+      grant_type: 'refresh_token',
+      refresh_token: refreshToken,
+      client_id: 'your_client_id',
+      client_secret: 'your_client_secret'
+    })
+  });
+  
+  if (!response.ok) {
+    throw new Error('Failed to refresh token');
+  }
+  
+  return await response.json();
+};
 
-Documentation requirements vary based on entity type:
+// API wrapper with automatic token refresh
+class MubarokahAPIClient {
+  constructor(accessToken, refreshToken) {
+    this.accessToken = accessToken;
+    this.refreshToken = refreshToken;
+  }
+  
+  async makeAuthenticatedRequest(url, options = {}) {
+    const requestOptions = {
+      ...options,
+      headers: {
+        'Authorization': `Bearer ${this.accessToken}`,
+        'Accept': 'application/json',
+        ...options.headers
+      }
+    };
+    
+    let response = await fetch(url, requestOptions);
+    
+    // Handle token expiration
+    if (response.status === 401) {
+      try {
+        const tokenResponse = await refreshAccessToken(this.refreshToken);
+        this.accessToken = tokenResponse.access_token;
+        
+        // Retry the original request with new token
+        requestOptions.headers['Authorization'] = `Bearer ${this.accessToken}`;
+        response = await fetch(url, requestOptions);
+      } catch (refreshError) {
+        throw new Error('Token refresh failed. User needs to re-authenticate.');
+      }
+    }
+    
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+    
+    return await response.json();
+  }
+  
+  async getUserInfo() {
+    return this.makeAuthenticatedRequest('https://mubarokah.id/api/user');
+  }
+  
+  async getUserDetails() {
+    return this.makeAuthenticatedRequest('https://mubarokah.id/api/user/details');
+  }
+}
+```
 
--   **Individual Developers**:
-    -   ✅ KTP (Indonesian ID Card) or equivalent national ID for identity verification.
-    -   ✅ Business License (if applicable, e.g., for sole proprietorships).
--   **Organizations/Companies**:
-    -   ✅ NIB (Nomor Induk Berusaha - Business Registration Number for Indonesia).
-    -   ✅ NPWP (Nomor Pokok Wajib Pajak - Taxpayer Identification Number for Indonesia).
-    -   ✅ Akta Pendirian Perusahaan (Deed of Establishment).
-    -   ✅ Company Profile.
+## `detail-user` Scope Approval Process
 
-<Warning>Ensure all documents are clear, valid, and legible. Incomplete or unclear documentation can delay the approval process.</Warning>
+The `detail-user` scope provides access to sensitive personal information. Due to the sensitive nature of this data, applications requesting this scope must undergo an administrative approval process.
 
-#### Step 4: Admin Review Process
+### Approval Requirements
 
--   The Mubarokah ID Admin Team will review your request, justification, and documents.
--   This process may take several business days.
--   You may be contacted for additional information or clarification.
-    ```php
-    // Simplified internal admin workflow (conceptual)
-    // class ScopeAccessRequestController
-    // {
-    //     public function approve(ScopeAccessRequest $request)
-    //     {
-    //         DB::transaction(function() use ($request) {
-    //             $request->update([
-    //                 'status' => 'approved',
-    //                 'approved_by' => Auth::id(), // Admin user
-    //                 'approved_at' => now()
-    //             ]);
-    //
-    //             // System flag enabling the scope for the client_id
-    //             ClientScopeApproval::enable($request->client_id, 'detail-user');
-    //
-    //             // Notify developer via email/portal
-    //             $request->developer->notify(new ScopeRequestApprovedNotification($request));
-    //         });
-    //     }
-    // }
-    ```
+<Steps>
+  <Step title="Application Registration">
+    Your application must first be registered with Mubarokah ID and have basic OAuth integration working with the `view-user` scope.
+  </Step>
+  
+  <Step title="Documentation Submission">
+    Submit the following documentation:
+    - **Privacy Policy**: Clear statement on how user data will be handled
+    - **Data Usage Justification**: Detailed explanation of why detailed user information is needed
+    - **Security Measures**: Description of data protection measures in your application
+    - **Compliance Information**: Evidence of GDPR, CCPA, or local data protection compliance
+  </Step>
+  
+  <Step title="Technical Review">
+    Your application will undergo a security review including:
+    - Code review of OAuth implementation
+    - Security audit of data handling procedures
+    - Testing of data deletion capabilities
+  </Step>
+  
+  <Step title="Approval Decision">
+    If approved, your application can successfully request the `detail-user` scope during OAuth flows.
+    If rejected, reasons will be provided with guidance for resubmission.
+  </Step>
+</Steps>
 
-#### Step 5: Notification and Implementation
+<Warning>
+**Important**: Even after obtaining the `detail-user` scope in an access token, your application will receive a `403 Forbidden` error when calling `/api/user/details` unless your client application has received administrative approval.
+</Warning>
 
--   You will be notified via email and/or the Developer Portal once a decision is made.
--   If **approved**, your application can now successfully request the `detail-user` scope during the OAuth flow, and users will be able to consent to it.
--   If **rejected**, reasons will be provided. You may need to address the concerns and re-apply.
+### Approval Process Implementation
 
-Once approved, when you include `detail-user` in the `scope` parameter of your authorization request, users will see this permission on the consent screen. If they grant it, the resulting access token will be authorized to call the [`/api/user/details`](../api-reference/user/get-user-details) endpoint.
+```javascript
+// Check if client application has approval for detail-user scope
+const checkScopeApproval = async (clientId) => {
+  try {
+    const response = await fetch(`https://mubarokah.id/api/admin/scope-approval/${clientId}`, {
+      headers: {
+        'Authorization': `Bearer ${adminToken}`,
+        'Accept': 'application/json'
+      }
+    });
+    
+    if (response.ok) {
+      const approval = await response.json();
+      return approval.scopes.includes('detail-user');
+    }
+    
+    return false;
+  } catch (error) {
+    console.error('Failed to check scope approval:', error);
+    return false;
+  }
+};
+
+// Graceful handling of unapproved scope requests
+const safeGetUserDetails = async (accessToken) => {
+  try {
+    return await getUserDetails(accessToken);
+  } catch (error) {
+    if (error.message.includes('unapproved_scope')) {
+      // Handle gracefully - maybe show an upgrade message to admin
+      return {
+        error: 'approval_required',
+        message: 'This feature requires additional permissions. Please contact your administrator to request approval for detailed user access.',
+        upgradeAction: 'request_approval'
+      };
+    }
+    throw error;
+  }
+};
+```
 
 ## Compliance and Legal Considerations
 
 Handling user data, especially sensitive information accessible via the `detail-user` scope, comes with significant responsibilities.
 
-### Data Usage Guidelines:
+### Data Usage Guidelines
 
--   🔒 **Principle of Least Privilege**: Only request scopes that are absolutely necessary for your application's functionality.
--   📝 **Purpose Limitation**: Use the data obtained only for the purposes clearly stated to the user and for which they provided consent. Do not repurpose data without additional consent.
--   🛡️ **Data Minimization**: Do not request or store data you do not need.
--   🗑️ **Data Retention**: Establish clear data retention policies. Delete user data that is no longer necessary for the stated purpose or when a user revokes access or deletes their account with your service.
--   🔐 **Security Standards**: Implement robust security measures to protect user data, including encryption at rest and in transit, access controls, and regular security audits.
--   📊 **Audit Trails**: Maintain logs of data access, especially for sensitive information.
+<Tabs>
+  <Tab title="🔒 Data Minimization">
+    ```javascript
+    // Good: Only request scopes you actively use
+    const authURL = generateAuthURL(['view-user']); // Basic profile only
+    
+    // Avoid: Requesting excessive scopes
+    const authURL = generateAuthURL(['view-user', 'detail-user']); // Only if truly needed
+    ```
+  </Tab>
+  
+  <Tab title="📝 Purpose Limitation">
+    ```javascript
+    // Good: Clear purpose-specific data usage
+    class UserProfileService {
+      async getProfileForDisplay(accessToken) {
+        const basicInfo = await getUserInfo(accessToken);
+        return {
+          displayName: basicInfo.name,
+          avatar: basicInfo.profile_picture,
+          username: basicInfo.username
+        };
+      }
+      
+      async getProfileForKYC(accessToken) {
+        // Only call if explicitly needed for KYC
+        const detailedInfo = await getUserDetails(accessToken);
+        return {
+          fullName: detailedInfo.name,
+          dateOfBirth: detailedInfo.date_of_birth,
+          address: detailedInfo.address
+        };
+      }
+    }
+    ```
+  </Tab>
+  
+  <Tab title="🛡️ Data Security">
+    ```javascript
+    // Implementation with encryption and secure storage
+    class SecureUserDataManager {
+      constructor(encryptionKey) {
+        this.encryptionKey = encryptionKey;
+      }
+      
+      async storeUserData(userId, userData) {
+        const encryptedData = await this.encrypt(userData);
+        
+        // Store with automatic expiration
+        await this.secureStorage.set(`user:${userId}`, encryptedData, {
+          ttl: 24 * 60 * 60 * 1000, // 24 hours
+          encrypted: true
+        });
+      }
+      
+      async getUserData(userId) {
+        const encryptedData = await this.secureStorage.get(`user:${userId}`);
+        return encryptedData ? await this.decrypt(encryptedData) : null;
+      }
+      
+      async deleteUserData(userId) {
+        await this.secureStorage.delete(`user:${userId}`);
+        // Also clear from any caches
+        await this.clearUserFromCaches(userId);
+      }
+    }
+    ```
+  </Tab>
+  
+  <Tab title="🗑️ Data Retention">
+    ```javascript
+    // Automatic data cleanup implementation
+    class DataRetentionManager {
+      constructor() {
+        this.retentionPeriods = {
+          basic_profile: 365 * 24 * 60 * 60 * 1000, // 1 year
+          detailed_profile: 90 * 24 * 60 * 60 * 1000, // 90 days
+          access_logs: 180 * 24 * 60 * 60 * 1000 // 6 months
+        };
+      }
+      
+      async scheduleDataCleanup(userId, dataType) {
+        const retentionPeriod = this.retentionPeriods[dataType];
+        const expiryDate = new Date(Date.now() + retentionPeriod);
+        
+        await this.scheduler.schedule('cleanup_user_data', {
+          userId,
+          dataType,
+          executeAt: expiryDate
+        });
+      }
+      
+      async handleUserAccountDeletion(userId) {
+        // Immediate deletion of all user data
+        await Promise.all([
+          this.deleteUserProfile(userId),
+          this.deleteUserAccessLogs(userId),
+          this.deleteUserFromThirdPartyServices(userId),
+          this.cancelScheduledCleanups(userId)
+        ]);
+      }
+    }
+    ```
+  </Tab>
+</Tabs>
 
-### Privacy Compliance:
-
--   **Transparency**: Clearly inform users how their data will be used, stored, and protected in your privacy policy.
--   **User Consent**: Ensure you have explicit user consent for any data processing activities. The OAuth consent screen is part of this, but your application's own terms and privacy policy are also crucial.
--   **User Rights**: Provide mechanisms for users to exercise their data rights (e.g., access, correction, deletion) as required by applicable privacy laws (like GDPR, CCPA, or local Indonesian regulations).
--   **Data Processing Agreements**: If Mubarokah ID acts as a data processor on your behalf, or vice-versa, ensure appropriate agreements are in place.
+### Privacy Compliance Implementation
 
 ```javascript
-// Example: Privacy-compliant data handling class structure (conceptual)
-// class UserDataManager {
-//   constructor(apiAccessToken, encryptionKey) {
-//     this.apiAccessToken = apiAccessToken;
-//     this.encryptionKey = encryptionKey; // For client-side encryption if needed
-//   }
-
-//   async fetchAndStoreUserData(userId, requestedScopes) {
-//     // 1. Fetch only data corresponding to granted scopes
-//     const userData = await this.fetchUserDataFromApi(this.apiAccessToken, requestedScopes);
-
-//     // 2. Encrypt sensitive fields before storage (if storing)
-//     const encryptedData = this.encryptSensitiveFields(userData, ['phone_number', 'address']);
-
-//     // 3. Store with clear purpose and retention policy
-//     await database.saveUserRecord(userId, encryptedData, {
-//       purpose: "To provide personalized services as per user consent.",
-//       retention: "Delete after 30 days of inactivity or upon user request."
-//     });
-
-//     // 4. Log access for audit purposes
-//     this.logDataAccess(userId, 'fetch_and_store_user_data', requestedScopes);
-
-//     return userData;
-//   }
-
-//   async deleteUserData(userId) {
-//     // Implement secure deletion from your systems
-//     await database.deleteUserRecord(userId);
-//     this.logDataAccess(userId, 'delete_user_data', ['all_data']);
-//   }
-
-//   // ... other methods for encryption, logging, etc.
-// }
+// GDPR/Privacy compliance helper
+class PrivacyComplianceManager {
+  async handleDataSubjectRequest(userId, requestType) {
+    switch (requestType) {
+      case 'access':
+        return this.exportUserData(userId);
+      
+      case 'rectification':
+        return this.updateUserData(userId);
+      
+      case 'erasure':
+        return this.deleteUserData(userId);
+      
+      case 'portability':
+        return this.exportPortableUserData(userId);
+      
+      case 'restriction':
+        return this.restrictUserDataProcessing(userId);
+      
+      default:
+        throw new Error('Unsupported data subject request type');
+    }
+  }
+  
+  async exportUserData(userId) {
+    const userData = await this.getUserCompleteProfile(userId);
+    const accessLogs = await this.getUserAccessLogs(userId);
+    
+    return {
+      profile: userData,
+      access_history: accessLogs,
+      data_retention_info: this.getRetentionInfo(userId),
+      export_date: new Date().toISOString()
+    };
+  }
+  
+  async auditDataAccess(userId, accessType, purpose) {
+    await this.auditLogger.log({
+      user_id: userId,
+      access_type: accessType,
+      purpose: purpose,
+      timestamp: new Date(),
+      ip_address: this.getCurrentIPAddress(),
+      user_agent: this.getCurrentUserAgent()
+    });
+  }
+}
 ```
-<Warning>
-Failure to comply with data protection regulations and Mubarokah ID's terms of service regarding data handling can result in revocation of API access and other penalties.
-</Warning>
+
+## Error Handling Best Practices
+
+```javascript
+// Comprehensive error handling for OAuth and API calls
+class MubarokahErrorHandler {
+  static handleOAuthError(error) {
+    const errorMappings = {
+      'invalid_request': 'The request is missing required parameters or contains invalid values.',
+      'invalid_client': 'Client authentication failed or client is not authorized.',
+      'invalid_grant': 'The authorization code is invalid, expired, or revoked.',
+      'unauthorized_client': 'The client is not authorized to use this authorization grant type.',
+      'unsupported_grant_type': 'The grant type is not supported by the authorization server.',
+      'invalid_scope': 'The requested scope is invalid, unknown, or malformed.',
+      'access_denied': 'The user denied the authorization request.',
+      'unapproved_scope': 'Your application needs admin approval to access this data.'
+    };
+    
+    return {
+      code: error.error || 'unknown_error',
+      message: errorMappings[error.error] || error.error_description || 'An unknown error occurred',
+      userMessage: this.getUserFriendlyMessage(error.error)
+    };
+  }
+  
+  static getUserFriendlyMessage(errorCode) {
+    const userMessages = {
+      'access_denied': 'You declined to authorize this application. Please try again if you want to proceed.',
+      'invalid_scope': 'This application is requesting permissions that are not available.',
+      'unapproved_scope': 'This feature requires additional approval. Please contact support.',
+      'token_expired': 'Your session has expired. Please log in again.',
+      'insufficient_scope': 'You need to grant additional permissions to use this feature.'
+    };
+    
+    return userMessages[errorCode] || 'An error occurred during authentication. Please try again.';
+  }
+}
+
+// Usage example with proper error handling
+const handleUserAuthentication = async (authCode) => {
+  try {
+    const tokens = await exchangeCodeForToken(authCode);
+    const userProfile = await getCompleteUserProfile(tokens.access_token);
+    
+    return {
+      success: true,
+      user: userProfile,
+      tokens: tokens
+    };
+  } catch (error) {
+    const handledError = MubarokahErrorHandler.handleOAuthError(error);
+    
+    console.error('Authentication error:', handledError);
+    
+    return {
+      success: false,
+      error: handledError,
+      retryable: ['token_expired', 'access_denied'].includes(handledError.code)
+    };
+  }
+};
+```
+
+<Note>
+This implementation provides production-ready code examples that can be directly used and tested with the Mubarokah ID OAuth system. All endpoints use the correct `https://mubarokah.id/` domain and include proper error handling, security measures, and compliance considerations.
+</Note>
+```

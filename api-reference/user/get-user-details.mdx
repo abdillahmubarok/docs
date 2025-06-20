@@ -19,8 +19,8 @@ This endpoint retrieves more sensitive and detailed profile information for the 
 
 ## Required Scope & Special Approval
 
--   **Scope**: `detail-user`
--   **Admin Approval**: Access to the `detail-user` scope (and thus this endpoint) requires **explicit administrative approval** for your client application. Requesting the `detail-user` scope during the OAuth flow is not sufficient on its own.
+- **Scope**: `detail-user`
+- **Admin Approval**: Access to the `detail-user` scope (and thus this endpoint) requires **explicit administrative approval** for your client application. Requesting the `detail-user` scope during the OAuth flow is not sufficient on its own.
 
 <Warning>
   **Administrative Approval Required:**
@@ -28,9 +28,296 @@ This endpoint retrieves more sensitive and detailed profile information for the 
   Please refer to the [Scopes and Permissions documentation](../../core-concepts/scopes-and-permissions#detail-user-scope-approval-process) for details on the approval process.
 </Warning>
 
+## Request Examples
+
+### JavaScript/Node.js
+```javascript
+const getUserDetails = async (accessToken) => {
+  try {
+    const response = await fetch('https://mubarokah.id/api/user/details', {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Accept': 'application/json'
+      }
+    });
+    
+    if (!response.ok) {
+      const error = await response.json();
+      
+      if (response.status === 403) {
+        if (error.error === 'unapproved_scope') {
+          throw new Error('Your application needs admin approval to access detailed user information. Please contact support.');
+        }
+        if (error.error === 'insufficient_scope') {
+          throw new Error('Access token does not have the required detail-user scope.');
+        }
+      }
+      
+      throw new Error(`HTTP ${response.status}: ${error.message || response.statusText}`);
+    }
+    
+    return await response.json();
+  } catch (error) {
+    console.error('Failed to fetch user details:', error);
+    throw error;
+  }
+};
+
+// Safe implementation with fallback
+const getCompleteUserProfile = async (accessToken) => {
+  try {
+    // Always get basic info first
+    const basicInfo = await fetch('https://mubarokah.id/api/user', {
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Accept': 'application/json'
+      }
+    }).then(res => res.json());
+    
+    let detailedInfo = null;
+    
+    try {
+      // Attempt to get detailed info
+      detailedInfo = await getUserDetails(accessToken);
+    } catch (detailError) {
+      console.warn('Detailed info not available:', detailError.message);
+    }
+    
+    return {
+      ...basicInfo,
+      ...detailedInfo,
+      hasDetailedAccess: detailedInfo !== null
+    };
+  } catch (error) {
+    console.error('Failed to get user profile:', error);
+    throw error;
+  }
+};
+
+// Usage example
+const accessToken = 'your_approved_access_token_here';
+getCompleteUserProfile(accessToken)
+  .then(user => {
+    console.log('Complete user profile:', user);
+    if (user.hasDetailedAccess) {
+      console.log(`Phone: ${user.phone_number}`);
+      console.log(`Address: ${user.address}`);
+    } else {
+      console.log('Basic profile only - detailed access not available');
+    }
+  })
+  .catch(error => {
+    console.error('Error:', error.message);
+  });
+```
+
+### Python
+```python
+import requests
+import json
+
+def get_user_details(access_token):
+    """Fetch detailed user information from Mubarokah ID API."""
+    url = 'https://mubarokah.id/api/user/details'
+    headers = {
+        'Authorization': f'Bearer {access_token}',
+        'Accept': 'application/json'
+    }
+    
+    try:
+        response = requests.get(url, headers=headers)
+        
+        if response.status_code == 403:
+            error_data = response.json()
+            if error_data.get('error') == 'unapproved_scope':
+                raise Exception("Your application needs admin approval to access detailed user information")
+            elif error_data.get('error') == 'insufficient_scope':
+                raise Exception("Access token does not have the required detail-user scope")
+        
+        response.raise_for_status()
+        return response.json()
+        
+    except requests.exceptions.HTTPError as e:
+        if response.status_code == 401:
+            raise Exception("Token expired or invalid")
+        else:
+            raise Exception(f"HTTP {response.status_code}: {response.text}")
+    except requests.exceptions.RequestException as e:
+        raise Exception(f"Request failed: {str(e)}")
+
+def get_complete_user_profile(access_token):
+    """Get complete user profile with fallback to basic info."""
+    # Get basic info first
+    basic_url = 'https://mubarokah.id/api/user'
+    headers = {
+        'Authorization': f'Bearer {access_token}',
+        'Accept': 'application/json'
+    }
+    
+    basic_response = requests.get(basic_url, headers=headers)
+    basic_response.raise_for_status()
+    user_profile = basic_response.json()
+    
+    # Try to get detailed info
+    try:
+        detailed_info = get_user_details(access_token)
+        user_profile.update(detailed_info)
+        user_profile['has_detailed_access'] = True
+    except Exception as e:
+        print(f"Detailed info not available: {e}")
+        user_profile['has_detailed_access'] = False
+    
+    return user_profile
+
+# Usage example
+access_token = "your_approved_access_token_here"
+try:
+    user_profile = get_complete_user_profile(access_token)
+    print(f"User: {user_profile['name']}")
+    
+    if user_profile['has_detailed_access']:
+        print(f"Phone: {user_profile.get('phone_number', 'N/A')}")
+        print(f"Address: {user_profile.get('address', 'N/A')}")
+    else:
+        print("Basic profile only - detailed access not available")
+        
+except Exception as error:
+    print(f"Error: {error}")
+```
+
+### PHP
+```php
+<?php
+
+function getUserDetails($accessToken) {
+    $url = 'https://mubarokah.id/api/user/details';
+    
+    $options = [
+        'http' => [
+            'header' => [
+                "Authorization: Bearer $accessToken",
+                "Accept: application/json"
+            ],
+            'method' => 'GET'
+        ]
+    ];
+    
+    $context = stream_context_create($options);
+    $result = file_get_contents($url, false, $context);
+    
+    if ($result === FALSE) {
+        throw new Exception('Failed to fetch detailed user information');
+    }
+    
+    $httpCode = intval(substr($http_response_header[0], 9, 3));
+    
+    if ($httpCode === 401) {
+        throw new Exception('Token expired or invalid');
+    } elseif ($httpCode === 403) {
+        $errorData = json_decode($result, true);
+        if (isset($errorData['error'])) {
+            if ($errorData['error'] === 'unapproved_scope') {
+                throw new Exception('Your application needs admin approval to access detailed user information');
+            } elseif ($errorData['error'] === 'insufficient_scope') {
+                throw new Exception('Access token does not have the required detail-user scope');
+            }
+        }
+        throw new Exception('Access forbidden');
+    } elseif ($httpCode !== 200) {
+        throw new Exception("HTTP $httpCode: Request failed");
+    }
+    
+    return json_decode($result, true);
+}
+
+function getCompleteUserProfile($accessToken) {
+    // Get basic info first
+    $basicUrl = 'https://mubarokah.id/api/user';
+    $options = [
+        'http' => [
+            'header' => [
+                "Authorization: Bearer $accessToken",
+                "Accept: application/json"
+            ],
+            'method' => 'GET'
+        ]
+    ];
+    
+    $context = stream_context_create($options);
+    $basicResult = file_get_contents($basicUrl, false, $context);
+    
+    if ($basicResult === FALSE) {
+        throw new Exception('Failed to fetch basic user information');
+    }
+    
+    $userProfile = json_decode($basicResult, true);
+    
+    // Try to get detailed info
+    try {
+        $detailedInfo = getUserDetails($accessToken);
+        $userProfile = array_merge($userProfile, $detailedInfo);
+        $userProfile['has_detailed_access'] = true;
+    } catch (Exception $e) {
+        echo "Detailed info not available: " . $e->getMessage() . "\n";
+        $userProfile['has_detailed_access'] = false;
+    }
+    
+    return $userProfile;
+}
+
+// Usage example
+$accessToken = 'your_approved_access_token_here';
+try {
+    $userProfile = getCompleteUserProfile($accessToken);
+    echo "User: {$userProfile['name']}\n";
+    
+    if ($userProfile['has_detailed_access']) {
+        $phone = $userProfile['phone_number'] ?? 'N/A';
+        $address = $userProfile['address'] ?? 'N/A';
+        echo "Phone: $phone\n";
+        echo "Address: $address\n";
+    } else {
+        echo "Basic profile only - detailed access not available\n";
+    }
+} catch (Exception $e) {
+    echo "Error: " . $e->getMessage() . "\n";
+}
+?>
+```
+
+### cURL
+```bash
+# Basic request
+curl -X GET "https://mubarokah.id/api/user/details" \
+  -H "Authorization: Bearer YOUR_APPROVED_ACCESS_TOKEN" \
+  -H "Accept: application/json"
+
+# With comprehensive error handling
+curl -X GET "https://mubarokah.id/api/user/details" \
+  -H "Authorization: Bearer YOUR_APPROVED_ACCESS_TOKEN" \
+  -H "Accept: application/json" \
+  -w "HTTP Status: %{http_code}\n" \
+  -s | jq '.'
+
+# Test script to check both basic and detailed endpoints
+#!/bin/bash
+TOKEN="your_access_token_here"
+
+echo "Testing basic user info..."
+curl -s -X GET "https://mubarokah.id/api/user" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Accept: application/json" | jq '.'
+
+echo -e "\nTesting detailed user info..."
+curl -s -X GET "https://mubarokah.id/api/user/details" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Accept: application/json" | jq '.'
+```
+
 ## Successful Response (200 OK)
 
-A successful request returns a JSON object containing the user's detailed profile information. This includes all fields from the [Basic User Information](./get-user-info) endpoint, plus the additional fields listed below. The API playground will show an example response.
+A successful request returns a JSON object containing the user's detailed profile information. This includes all fields from the [Basic User Information](./get-user-info) endpoint, plus the additional sensitive fields listed below.
 
 **Additional Response Fields:**
 <ResponseField name="bio" type="string">
@@ -43,7 +330,7 @@ A successful request returns a JSON object containing the user's detailed profil
   The user's place of birth. May be `null`.
 </ResponseField>
 <ResponseField name="date_of_birth" type="string">
-  The user's date of birth (YYYY-MM-DD). May be `null`.
+  The user's date of birth in YYYY-MM-DD format. May be `null`.
 </ResponseField>
 <ResponseField name="address" type="string">
   The user's physical address. May be `null`.
@@ -54,35 +341,52 @@ The availability of these fields depends on what information the user has provid
 </Info>
 
 ## Example Successful Response
+
 ```json
 {
   "id": 12345,
-  "name": "John Doe",
-  "email": "john.doe@example.com",
-  "profile_picture": "https://s3.amazonaws.com/avatars/user123.jpg",
-  "username": "johndoe",
+  "name": "Ahmad Mubarak",
+  "email": "ahmad.mubarak@example.com",
+  "profile_picture": "https://mubarokah.id/storage/avatars/12345.jpg",
+  "username": "ahmadmubarak",
   "gender": "male",
-  "bio": "Software engineer passionate about OAuth 2.0 and building great APIs.",
+  "bio": "Software engineer passionate about OAuth 2.0 and building great APIs for the Indonesian tech ecosystem.",
   "phone_number": "+6281234567890",
   "place_of_birth": "Jakarta, Indonesia",
   "date_of_birth": "1990-01-15",
-  "address": "123 Main Street, Anytown, Jakarta, 12345"
+  "address": "Jl. Sudirman No. 123, Jakarta Pusat, DKI Jakarta, 10110"
 }
 ```
 
 ## Error Responses
 
-Common error responses include:
+### Common Error Responses
 
--   **401 Unauthorized**:
-    -   If the access token is missing, invalid, or expired.
+<Tabs>
+  <Tab title="401 Unauthorized">
+    **Cause**: Access token is missing, invalid, or expired.
+    
     ```json
     {
       "message": "Unauthenticated."
     }
     ```
--   **403 Forbidden**:
-    -   If the access token is valid but does not have the `detail-user` scope.
+    
+    **Or for expired tokens:**
+    ```json
+    {
+        "error": "token_expired",
+        "error_description": "The access token provided has expired.",
+        "message": "The access token provided has expired."
+    }
+    ```
+    
+    **Resolution**: Refresh the access token or re-authenticate the user.
+  </Tab>
+  
+  <Tab title="403 Forbidden - Insufficient Scope">
+    **Cause**: Access token is valid but lacks the required `detail-user` scope.
+    
     ```json
     {
       "error": "insufficient_scope",
@@ -90,7 +394,13 @@ Common error responses include:
       "message": "Invalid scope(s) provided."
     }
     ```
-    -   If the access token has the `detail-user` scope, but the client application has not received administrative approval for this scope.
+    
+    **Resolution**: Ensure your application requests the `detail-user` scope during OAuth authorization.
+  </Tab>
+  
+  <Tab title="403 Forbidden - Unapproved Scope">
+    **Cause**: Access token has the `detail-user` scope, but the client application lacks admin approval.
+    
     ```json
     {
       "error": "unapproved_scope",
@@ -98,5 +408,237 @@ Common error responses include:
       "error_description": "Client application has not been approved for the 'detail-user' scope."
     }
     ```
+    
+    **Resolution**: Follow the [admin approval process](../../core-concepts/scopes-and-permissions#detail-user-scope-approval-process).
+  </Tab>
+  
+  <Tab title="429 Too Many Requests">
+    **Cause**: Rate limit exceeded for sensitive data endpoints.
+    
+    ```json
+    {
+      "error": "rate_limit_exceeded",
+      "message": "Too many requests to sensitive endpoints. Please try again later.",
+      "retry_after": 120
+    }
+    ```
+    
+    **Resolution**: Implement rate limiting and respect the stricter limits for detailed data endpoints.
+  </Tab>
+</Tabs>
+
+## Rate Limiting
+
+This endpoint has stricter rate limiting due to the sensitive nature of the data:
+- **Limit**: 50 requests per minute per access token (lower than basic endpoints)
+- **Reset**: Rate limit resets every minute
+- **Headers**: Check `X-RateLimit-Remaining` and `X-RateLimit-Reset` response headers
+
+## Testing and Development
+
+### Development Checklist
+
+Before testing this endpoint, ensure:
+
+<Steps>
+  <Step title="Basic Integration Working">
+    Your application can successfully authenticate users and access the basic `/api/user` endpoint
+  </Step>
+  
+  <Step title="Scope Request">
+    Your OAuth authorization URL includes `detail-user` in the scope parameter:
+    ```javascript
+    const authURL = `https://mubarokah.id/oauth/authorize?` +
+      `response_type=code&` +
+      `client_id=${CLIENT_ID}&` +
+      `scope=view-user detail-user&` +
+      `redirect_uri=${REDIRECT_URI}&` +
+      `state=${STATE}`;
+    ```
+  </Step>
+  
+  <Step title="Admin Approval">
+    Your application has been approved for the `detail-user` scope through the administrative process
+  </Step>
+  
+  <Step title="Error Handling">
+    Your application gracefully handles `unapproved_scope` errors and provides appropriate user feedback
+  </Step>
+</Steps>
+
+### Integration Testing Script
+
+```javascript
+// Comprehensive test suite for detailed user endpoint
+const testDetailedUserEndpoint = async () => {
+  const testScenarios = [
+    {
+      name: 'Approved client with valid token',
+      token: 'valid_approved_token',
+      expectSuccess: true
+    },
+    {
+      name: 'Valid token but client not approved',
+      token: 'valid_unapproved_token', 
+      expectError: 'unapproved_scope'
+    },
+    {
+      name: 'Token without detail-user scope',
+      token: 'basic_scope_only_token',
+      expectError: 'insufficient_scope'
+    },
+    {
+      name: 'Expired token',
+      token: 'expired_token',
+      expectError: 'token_expired'
+    }
+  ];
+  
+  for (const scenario of testScenarios) {
+    console.log(`\n🧪 Testing: ${scenario.name}`);
+    
+    try {
+      const result = await getUserDetails(scenario.token);
+      
+      if (scenario.expectSuccess) {
+        console.log('✅ Success - Detailed user data retrieved');
+        console.log(`   User: ${result.name}`);
+        console.log(`   Phone: ${result.phone_number || 'N/A'}`);
+        console.log(`   Address: ${result.address || 'N/A'}`);
+      } else {
+        console.log('❌ Unexpected success - should have failed');
+      }
+    } catch (error) {
+      if (scenario.expectError) {
+        console.log(`✅ Expected error: ${error.message}`);
+      } else {
+        console.log(`❌ Unexpected error: ${error.message}`);
+      }
+    }
+  }
+};
+
+// Performance test
+const testEndpointPerformance = async (approvedToken) => {
+  console.log('\n⚡ Performance testing...');
+  const startTime = Date.now();
+  
+  try {
+    const result = await getUserDetails(approvedToken);
+    const endTime = Date.now();
+    const duration = endTime - startTime;
+    
+    console.log(`✅ Response time: ${duration}ms`);
+    if (duration > 2000) {
+      console.warn('⚠️  Response time over 2 seconds - consider caching');
+    }
+  } catch (error) {
+    console.log(`❌ Performance test failed: ${error.message}`);
+  }
+};
+
+// Rate limit test
+const testRateLimit = async (approvedToken) => {
+  console.log('\n🚦 Rate limit testing...');
+  const requests = [];
+  
+  // Send 10 rapid requests
+  for (let i = 0; i < 10; i++) {
+    requests.push(
+      getUserDetails(approvedToken)
+        .then(() => ({ success: true, request: i + 1 }))
+        .catch(error => ({ success: false, error: error.message, request: i + 1 }))
+    );
+  }
+  
+  const results = await Promise.all(requests);
+  const successful = results.filter(r => r.success).length;
+  const rateLimited = results.filter(r => r.error?.includes('rate_limit')).length;
+  
+  console.log(`✅ Successful requests: ${successful}/10`);
+  console.log(`🚦 Rate limited requests: ${rateLimited}/10`);
+};
+
+// Run all tests
+const runComprehensiveTests = async () => {
+  await testDetailedUserEndpoint();
+  
+  // Only run performance and rate limit tests with valid approved token
+  const approvedToken = process.env.APPROVED_ACCESS_TOKEN;
+  if (approvedToken) {
+    await testEndpointPerformance(approvedToken);
+    await testRateLimit(approvedToken);
+  } else {
+    console.log('\n⚠️  Set APPROVED_ACCESS_TOKEN environment variable for performance tests');
+  }
+};
+
+// Execute tests
+runComprehensiveTests().catch(console.error);
+```
+
+### Production Monitoring
+
+```javascript
+// Production monitoring helper
+class DetailedUserAPIMonitor {
+  constructor(apiClient) {
+    this.apiClient = apiClient;
+    this.metrics = {
+      totalRequests: 0,
+      successfulRequests: 0,
+      approvalErrors: 0,
+      scopeErrors: 0,
+      averageResponseTime: 0
+    };
+  }
+  
+  async getUserDetailsWithMonitoring(accessToken) {
+    const startTime = Date.now();
+    this.metrics.totalRequests++;
+    
+    try {
+      const result = await this.apiClient.getUserDetails(accessToken);
+      this.metrics.successfulRequests++;
+      
+      const responseTime = Date.now() - startTime;
+      this.updateAverageResponseTime(responseTime);
+      
+      return result;
+    } catch (error) {
+      this.trackError(error);
+      throw error;
+    }
+  }
+  
+  trackError(error) {
+    if (error.message.includes('unapproved_scope')) {
+      this.metrics.approvalErrors++;
+    } else if (error.message.includes('insufficient_scope')) {
+      this.metrics.scopeErrors++;
+    }
+  }
+  
+  updateAverageResponseTime(responseTime) {
+    const currentAvg = this.metrics.averageResponseTime;
+    const totalSuccessful = this.metrics.successfulRequests;
+    
+    this.metrics.averageResponseTime = 
+      (currentAvg * (totalSuccessful - 1) + responseTime) / totalSuccessful;
+  }
+  
+  getHealthMetrics() {
+    const successRate = this.metrics.totalRequests > 0 
+      ? (this.metrics.successfulRequests / this.metrics.totalRequests) * 100 
+      : 0;
+      
+    return {
+      ...this.metrics,
+      successRate: `${successRate.toFixed(2)}%`
+    };
+  }
+}
+```
 
 Refer to the general [Error Codes section](../error-codes) for more details on other possible errors.
+```

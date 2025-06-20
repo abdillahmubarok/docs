@@ -18,13 +18,152 @@ This endpoint retrieves basic profile information for the user associated with t
 </ParamField>
 
 ## Required Scope
--   `view-user`
+- `view-user`
 
 Your application must request the `view-user` scope during the OAuth authorization flow to access this endpoint. If the access token does not have this scope, a `403 Forbidden` error will be returned.
 
+## Request Examples
+
+### JavaScript/Node.js
+```javascript
+const getUserInfo = async (accessToken) => {
+  try {
+    const response = await fetch('https://mubarokah.id/api/user', {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Accept': 'application/json'
+      }
+    });
+    
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(`HTTP ${response.status}: ${error.message || response.statusText}`);
+    }
+    
+    return await response.json();
+  } catch (error) {
+    console.error('Failed to fetch user info:', error);
+    throw error;
+  }
+};
+
+// Usage example
+const accessToken = 'your_access_token_here';
+getUserInfo(accessToken)
+  .then(user => {
+    console.log('User info:', user);
+    console.log(`Welcome, ${user.name}!`);
+  })
+  .catch(error => {
+    console.error('Error:', error.message);
+  });
+```
+
+### Python
+```python
+import requests
+import json
+
+def get_user_info(access_token):
+    """Fetch basic user information from Mubarokah ID API."""
+    url = 'https://mubarokah.id/api/user'
+    headers = {
+        'Authorization': f'Bearer {access_token}',
+        'Accept': 'application/json'
+    }
+    
+    try:
+        response = requests.get(url, headers=headers)
+        response.raise_for_status()  # Raises an HTTPError for bad responses
+        return response.json()
+    except requests.exceptions.HTTPError as e:
+        if response.status_code == 401:
+            raise Exception("Token expired or invalid")
+        elif response.status_code == 403:
+            raise Exception("Insufficient scope: view-user required")
+        else:
+            raise Exception(f"HTTP {response.status_code}: {response.text}")
+    except requests.exceptions.RequestException as e:
+        raise Exception(f"Request failed: {str(e)}")
+
+# Usage example
+access_token = "your_access_token_here"
+try:
+    user_info = get_user_info(access_token)
+    print(f"Welcome, {user_info['name']}!")
+    print(f"Email: {user_info['email']}")
+except Exception as error:
+    print(f"Error: {error}")
+```
+
+### PHP
+```php
+<?php
+
+function getUserInfo($accessToken) {
+    $url = 'https://mubarokah.id/api/user';
+    
+    $options = [
+        'http' => [
+            'header' => [
+                "Authorization: Bearer $accessToken",
+                "Accept: application/json"
+            ],
+            'method' => 'GET'
+        ]
+    ];
+    
+    $context = stream_context_create($options);
+    $result = file_get_contents($url, false, $context);
+    
+    if ($result === FALSE) {
+        throw new Exception('Failed to fetch user information');
+    }
+    
+    $httpCode = intval(substr($http_response_header[0], 9, 3));
+    
+    if ($httpCode === 401) {
+        throw new Exception('Token expired or invalid');
+    } elseif ($httpCode === 403) {
+        throw new Exception('Insufficient scope: view-user required');
+    } elseif ($httpCode !== 200) {
+        throw new Exception("HTTP $httpCode: Request failed");
+    }
+    
+    return json_decode($result, true);
+}
+
+// Usage example
+$accessToken = 'your_access_token_here';
+try {
+    $userInfo = getUserInfo($accessToken);
+    echo "Welcome, {$userInfo['name']}!\n";
+    echo "Email: {$userInfo['email']}\n";
+} catch (Exception $e) {
+    echo "Error: " . $e->getMessage() . "\n";
+}
+?>
+```
+
+### cURL
+```bash
+# Basic request
+curl -X GET "https://mubarokah.id/api/user" \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
+  -H "Accept: application/json"
+
+# With error handling and formatting
+curl -X GET "https://mubarokah.id/api/user" \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
+  -H "Accept: application/json" \
+  -w "HTTP Status: %{http_code}\n" \
+  -s | jq '.'
+```
+
 ## Successful Response (200 OK)
 
-A successful request returns a JSON object containing the user's basic profile information. The API playground will show an example response.
+A successful request returns a JSON object containing the user's basic profile information.
 
 **Response Fields:**
 <ResponseField name="id" type="number" required={true}>
@@ -51,25 +190,29 @@ A successful request returns a JSON object containing the user's basic profile i
 ```json
 {
   "id": 12345,
-  "name": "John Doe",
-  "email": "john.doe@example.com",
-  "profile_picture": "https://s3.amazonaws.com/avatars/user123.jpg",
-  "username": "johndoe",
+  "name": "Ahmad Mubarak",
+  "email": "ahmad.mubarak@example.com",
+  "profile_picture": "https://mubarokah.id/storage/avatars/12345.jpg",
+  "username": "ahmadmubarak",
   "gender": "male"
 }
 ```
 
 ## Error Responses
 
-Common error responses include:
+### Common Error Responses
 
--   **401 Unauthorized**:
-    -   If the access token is missing, invalid, or expired.
+<Tabs>
+  <Tab title="401 Unauthorized">
+    **Cause**: Access token is missing, invalid, or expired.
+    
     ```json
     {
       "message": "Unauthenticated."
     }
     ```
+    
+    **Or for expired tokens:**
     ```json
     {
         "error": "token_expired",
@@ -77,8 +220,13 @@ Common error responses include:
         "message": "The access token provided has expired."
     }
     ```
--   **403 Forbidden**:
-    -   If the access token is valid but does not have the required `view-user` scope.
+    
+    **Resolution**: Refresh the access token or re-authenticate the user.
+  </Tab>
+  
+  <Tab title="403 Forbidden">
+    **Cause**: Access token is valid but lacks the required `view-user` scope.
+    
     ```json
     {
       "error": "insufficient_scope",
@@ -86,5 +234,80 @@ Common error responses include:
       "message": "Invalid scope(s) provided."
     }
     ```
+    
+    **Resolution**: Ensure your application requests the `view-user` scope during OAuth authorization.
+  </Tab>
+  
+  <Tab title="429 Too Many Requests">
+    **Cause**: Rate limit exceeded for API requests.
+    
+    ```json
+    {
+      "error": "rate_limit_exceeded",
+      "message": "Too many requests. Please try again later.",
+      "retry_after": 60
+    }
+    ```
+    
+    **Resolution**: Implement rate limiting in your application and respect the `retry_after` value.
+  </Tab>
+</Tabs>
+
+## Rate Limiting
+
+This endpoint is subject to rate limiting:
+- **Limit**: 100 requests per minute per access token
+- **Reset**: Rate limit resets every minute
+- **Headers**: Check `X-RateLimit-Remaining` and `X-RateLimit-Reset` response headers
+
+## Testing the Endpoint
+
+### Using the API Playground
+You can test this endpoint directly using the API playground above. Make sure you have:
+1. A valid access token with `view-user` scope
+2. The token is not expired
+3. Your application is properly registered
+
+### Integration Testing Script
+```javascript
+// Complete integration test
+const testUserInfoEndpoint = async () => {
+  const testCases = [
+    {
+      name: 'Valid token with view-user scope',
+      token: 'valid_token_here',
+      expectedStatus: 200
+    },
+    {
+      name: 'Expired token',
+      token: 'expired_token_here',
+      expectedStatus: 401
+    },
+    {
+      name: 'Token without view-user scope',
+      token: 'limited_scope_token_here',
+      expectedStatus: 403
+    }
+  ];
+  
+  for (const testCase of testCases) {
+    try {
+      console.log(`Testing: ${testCase.name}`);
+      const result = await getUserInfo(testCase.token);
+      
+      if (testCase.expectedStatus === 200) {
+        console.log('✅ Success:', result);
+        console.log(`User: ${result.name} (${result.email})`);
+      }
+    } catch (error) {
+      console.log(`❌ Expected error for ${testCase.name}:`, error.message);
+    }
+  }
+};
+
+// Run tests
+testUserInfoEndpoint();
+```
 
 Refer to the general [Error Codes section](../error-codes) for more details on other possible errors.
+```

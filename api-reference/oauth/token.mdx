@@ -1,282 +1,234 @@
 ---
 title: Token Endpoint
-description: API reference for the Mubarokah ID OAuth 2.0 Token Endpoint (/oauth/token). Used to exchange authorization codes or refresh tokens for access tokens.
+description: API reference for Mubarokah ID OAuth 2.0 Token Endpoint (/oauth/token). Used to exchange authorization codes or refresh tokens for access tokens.
 api: 'POST /oauth/token'
+authMethod: 'none'
 ---
 
 # Token Endpoint
 
-The Token Endpoint is used to obtain an access token (and optionally a refresh token) by presenting an authorization grant. Mubarokah ID supports multiple grant types at this endpoint, primarily the `authorization_code` grant, `refresh_token` grant, and `client_credentials` grant.
+The Token Endpoint is used to obtain access tokens (and optionally refresh tokens) by providing an authorization grant. Mubarokah ID supports several grant types on this endpoint: `authorization_code`, `refresh_token`, and `client_credentials`.
 
-All requests to the token endpoint **must be `POST` requests** and the body **must be `application/x-www-form-urlencoded`**.
+**Important requirements:**
+- All requests to the token endpoint **MUST use the `POST` method**
+- Request body **MUST use `application/x-www-form-urlencoded`**
+- Endpoint: `https://mubarokah.id/oauth/token`
 
-Client authentication can be performed either by including `client_id` and `client_secret` in the request body or by using HTTP Basic authentication with the `client_id` as the username and `client_secret` as the password.
-If using HTTP Basic Auth, include a header like: `Authorization: Basic base64(your_client_id:your_client_secret)`.
+## Request Parameters
 
-## Grant Types Supported
+<ParamField body="grant_type" type="string" required initialValue="authorization_code" placeholder="authorization_code">
+  Grant type to be used. Available options: `authorization_code`, `refresh_token`, or `client_credentials`
+</ParamField>
 
-<Tabs>
-  <Tab title="Authorization Code Grant">
-    This is the most common grant type used after a user authorizes your application. You exchange the `authorization_code` (obtained from the redirect to your `redirect_uri` after user consent) for an access token and a refresh token.
+<ParamField body="code" type="string" placeholder="def5020052a4b237f572e55dd3ff5428...">
+  Authorization code received from the `/oauth/authorize` redirect (only for grant_type: authorization_code)
+</ParamField>
 
-    **Request Body Parameters:**
-    <ParamField body="grant_type" type="string" required={true}>
-      **Must be `authorization_code`**.
-    </ParamField>
-    <ParamField body="code" type="string" required={true}>
-      The authorization code received from the `/oauth/authorize` redirect.
-    </ParamField>
-    <ParamField body="redirect_uri" type="string" required={true}>
-      The same `redirect_uri` that was used in the initial authorization request.
-    </ParamField>
-    <ParamField body="client_id" type="string" required={true}>
-      Your application's Client ID. (Required if not using HTTP Basic Auth header for client authentication).
-    </ParamField>
-    <ParamField body="client_secret" type="string" required={true}>
-      Your application's Client Secret. (Required if not using HTTP Basic Auth header for client authentication).
-    </ParamField>
-    <ParamField body="code_verifier" type="string">
-      If PKCE was used in the authorization request, this is the original `code_verifier` string. Required for public clients that used PKCE.
-    </ParamField>
+<ParamField body="refresh_token" type="string" placeholder="def502007283433111c7d0723e7683fd...">
+  Valid refresh token (only for grant_type: refresh_token)
+</ParamField>
 
-    **Example Request (Node.js - Server-Side):**
-    ```javascript
-    const fetch = require('node-fetch'); // Or your preferred HTTP client
+<ParamField body="redirect_uri" type="string" placeholder="http://127.0.0.1:3090/sso/auth/callback">
+  Redirect URI that matches the one used in the initial authorization request (for authorization_code grant)
+</ParamField>
 
-    const CLIENT_ID = "your_client_id";
-    const CLIENT_SECRET = "your_client_secret"; // Keep this secure on the server!
-    const REDIRECT_URI = "https://yourapp.com/callback";
-    const authorizationCode = "code_from_authorize_redirect";
-    // const codeVerifier = "pkce_code_verifier_if_used"; // From session/storage
+<ParamField body="client_id" type="string" required placeholder="0a9f8dd9-9f13-4138-abf7-566f30886cf1">
+  Your application's Client ID
+</ParamField>
 
-    async function exchangeCodeForTokens(code, codeVerifier) {
-      const params = new URLSearchParams();
-      params.append('grant_type', 'authorization_code');
-      params.append('code', code);
-      params.append('redirect_uri', REDIRECT_URI);
-      // If not using Basic Auth header, include client_id and client_secret in body
-      params.append('client_id', CLIENT_ID);
-      params.append('client_secret', CLIENT_SECRET);
+<ParamField body="client_secret" type="string" required placeholder="ORgE1SbhnjX73A3NPk2zZjxN0fMJetKPxXsH7Hyu">
+  Your application's Client Secret
+</ParamField>
 
-      if (codeVerifier) {
-        params.append('code_verifier', codeVerifier);
-      }
+<ParamField body="scope" type="string" placeholder="view-user detail-user">
+  Requested scope (optional for some grant types)
+</ParamField>
 
-      try {
-        const response = await fetch('https://mubarokah.id/oauth/token', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-            // Example of Basic Auth (alternative to client_id/secret in body):
-            // 'Authorization': 'Basic ' + Buffer.from(CLIENT_ID + ':' + CLIENT_SECRET).toString('base64')
-          },
-          body: params
-        });
+<ParamField body="code_verifier" type="string" placeholder="">
+  Code verifier for PKCE (optional, if using PKCE)
+</ParamField>
 
-        const tokenData = await response.json();
+## Response
 
-        if (!response.ok) {
-          throw new Error(tokenData.error_description || tokenData.error || 'Token exchange failed');
-        }
-        return tokenData;
-      } catch (error) {
-        console.error('Token Exchange Error:', error.message);
-        throw error;
-      }
-    }
-
-    // exchangeCodeForTokens(authorizationCode, codeVerifierValue);
-    ```
-
-    **Example Successful Response (JSON):**
-    ```json
-    {
-      "token_type": "Bearer",
-      "expires_in": 86400,
-      "access_token": "eyJhbGciOiJSUzI1NiIs...",
-      "refresh_token": "def5020023761949f076f0698738501d013...",
-      "scope": "view-user detail-user"
-    }
-    ```
-  </Tab>
-  <Tab title="Refresh Token Grant">
-    When an access token expires, you can use a refresh token to obtain a new access token (and potentially a new refresh token) without requiring the user to re-authenticate.
-
-    **Request Body Parameters:**
-    <ParamField body="grant_type" type="string" required={true}>
-      **Must be `refresh_token`**.
-    </ParamField>
-    <ParamField body="refresh_token" type="string" required={true}>
-      The refresh token issued to your application.
-    </ParamField>
-    <ParamField body="client_id" type="string" required={true}>
-      Your application's Client ID. (Required if not using HTTP Basic Auth).
-    </ParamField>
-    <ParamField body="client_secret" type="string" required={true}>
-      Your application's Client Secret. (Required if not using HTTP Basic Auth).
-    </ParamField>
-    <ParamField body="scope" type="string">
-      Optional. A space-separated list of scopes. You can request a subset of the original scopes. If omitted, the new access token will have the same scopes as the original, or a default set if the refresh token is not scoped.
-    </ParamField>
-
-    **Example Request (Node.js - Server-Side):**
-    ```javascript
-    const fetch = require('node-fetch');
-
-    const CLIENT_ID = "your_client_id";
-    const CLIENT_SECRET = "your_client_secret";
-    const currentRefreshToken = "user_s_refresh_token";
-
-    async function refreshAccessToken(refreshToken) {
-      const params = new URLSearchParams();
-      params.append('grant_type', 'refresh_token');
-      params.append('refresh_token', refreshToken);
-      params.append('client_id', CLIENT_ID);
-      params.append('client_secret', CLIENT_SECRET);
-      // params.append('scope', 'view-user'); // Optionally request narrower scopes
-
-      try {
-        const response = await fetch('https://mubarokah.id/oauth/token', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-          },
-          body: params
-        });
-
-        const tokenData = await response.json();
-
-        if (!response.ok) {
-          throw new Error(tokenData.error_description || tokenData.error || 'Token refresh failed');
-        }
-        // A new refresh token might be issued, always update your stored refresh token if one is returned.
-        return tokenData;
-      } catch (error) {
-        console.error('Token Refresh Error:', error.message);
-        // If refresh fails, the user may need to re-authenticate via the authorization code flow.
-        throw error;
-      }
-    }
-
-    // refreshAccessToken(currentRefreshToken);
-    ```
-
-    **Example Successful Response (JSON):**
-    ```json
-    {
-      "token_type": "Bearer",
-      "expires_in": 86400,
-      "access_token": "new_eyJhbGciOiJSUzI1NiIs...",
-      "refresh_token": "new_def5020023761949f076f0698...", // Sometimes a new refresh token is returned
-      "scope": "view-user detail-user"
-    }
-    ```
-    <Info>
-    Always store the new `refresh_token` if one is returned in the response, as the old one might be invalidated.
-    </Info>
-  </Tab>
-  <Tab title="Client Credentials Grant">
-    This grant is used for machine-to-machine (M2M) authentication, where your application needs to access its own resources or act on its own behalf, not on behalf of a user.
-
-    **Request Body Parameters:**
-    <ParamField body="grant_type" type="string" required={true}>
-      **Must be `client_credentials`**.
-    </ParamField>
-    <ParamField body="client_id" type="string" required={true}>
-      Your application's Client ID. (Required if not using HTTP Basic Auth).
-    </ParamField>
-    <ParamField body="client_secret" type="string" required={true}>
-      Your application's Client Secret. (Required if not using HTTP Basic Auth).
-    </ParamField>
-    <ParamField body="scope" type="string">
-      Optional. A space-separated list of scopes relevant to your application's own operations (e.g., `internal-stats-access`).
-    </ParamField>
-
-    **Example Request (Node.js - Server-Side):**
-    ```javascript
-    const fetch = require('node-fetch');
-
-    const CLIENT_ID = "your_m2m_client_id";
-    const CLIENT_SECRET = "your_m2m_client_secret";
-
-    async function getAppAccessToken() {
-      const params = new URLSearchParams();
-      params.append('grant_type', 'client_credentials');
-      params.append('client_id', CLIENT_ID);
-      params.append('client_secret', CLIENT_SECRET);
-      // params.append('scope', 'some-client-specific-scope');
-
-      try {
-        const response = await fetch('https://mubarokah.id/oauth/token', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-          },
-          body: params
-        });
-
-        const tokenData = await response.json();
-
-        if (!response.ok) {
-          throw new Error(tokenData.error_description || tokenData.error || 'Client credentials grant failed');
-        }
-        // This grant type typically does not return a refresh token.
-        return tokenData;
-      } catch (error) {
-        console.error('Client Credentials Grant Error:', error.message);
-        throw error;
-      }
-    }
-
-    // getAppAccessToken();
-    ```
-
-    **Example Successful Response (JSON):**
-    ```json
-    {
-      "token_type": "Bearer",
-      "expires_in": 3600, // Typically shorter lifetime
-      "access_token": "app_eyJhbGciOiJSUzI1NiIs...",
-      "scope": "client-specific-scope"
-    }
-    ```
-    <Info>
-    The Client Credentials grant usually does not return a `refresh_token`. When the `access_token` expires, your application must request a new one using the same grant.
-    </Info>
-  </Tab>
-</Tabs>
-
-## Common Response Parameters
-
-Upon a successful request, the token endpoint will return a JSON object containing:
-
-<ResponseField name="access_token" type="string" required={true}>
-  The access token that your application can use to make requests to protected resources on behalf of the user or itself.
+<ResponseField name="access_token" type="string" required>
+  Access token that can be used to access protected resources
 </ResponseField>
-<ResponseField name="token_type" type="string" required={true}>
-  Typically `Bearer`. Indicates how the access token should be used in API requests (e.g., `Authorization: Bearer <access_token>`).
+
+<ResponseField name="token_type" type="string" required>
+  Usually `Bearer`. How to use the token in API requests
 </ResponseField>
-<ResponseField name="expires_in" type="number" required={true}>
-  The lifetime of the access token in seconds (e.g., `3600` for 1 hour, `86400` for 24 hours).
+
+<ResponseField name="expires_in" type="number" required>
+  Access token lifetime in seconds (e.g., `86400` for 24 hours)
 </ResponseField>
+
 <ResponseField name="refresh_token" type="string">
-  (Optional) An opaque token that can be used to obtain a new access token when the current one expires. Usually returned with the `authorization_code` grant.
+  Token for obtaining new access tokens when expired
 </ResponseField>
+
 <ResponseField name="scope" type="string">
-  (Optional) If the granted scopes are different from what was requested, this parameter will list the actual granted scopes.
+  Granted scope (if different from requested)
 </ResponseField>
 
-## Error Responses
+## How to Fill API Playground
 
-If a request to the token endpoint fails, it will return a JSON error response with an `error` and `error_description` field.
+Based on your successful Laravel OAuth flow, here's how to fill the fields in "Try It":
 
-**Example Error Response (JSON):**
+### **Option 1: Refresh Token Grant (RECOMMENDED)** ✅
+
+**Fields to fill:**
+- `grant_type`: `refresh_token`
+- `refresh_token`: `def502007283433111c7d0723e7683fd204977ccb0f679666ccd96fbf9385cda625bfe318102cf78245d44c8cb85818bc30b29ba74c25ccf1e8c85c5acbefcea8ee25c7b0d3f86e56e979c4a684c7d3276393c154577276e724c5f8f7f2aae592827f455e689d3a422fa85ea74af66e6c5f6a71d9ef8fcd5d0ebe3615cb7efdaa1771e3512c7db0562d63ac9e1cd28d1ce1c7148d667efaaaef9d49774a913f88438a7d57681119cb01eff80b3ad90c003ecd751852ee447ef232ada4789d684f802eeaa29ec35d06b7dfb3b4993171550e3625ff2f56b9157d5b565845f99575e70abd8c9b6d4ddf9e85fdd909b1cda38278147a021e6e2e6e18f9fcb053cb116e62fb5a4a2db50d3640da8d1848e6ea8fae43d334dac942bb374ecb84e89d4b793f77208c9a56c1a3ec76352e14d93cb888482cc91984747dd5f988bc2c416b23f3ebc3495ec919f540968807fff982e1066eedfca74ec0edc423bb13b36ecde2d73f87e8fa83f4bc3f3da36eb210c4a4bf30731774eac51807ae0b4cbf3fa4864254898427ce35b07b281505555668a6c364b2a9cbdeb02f2f0186c`
+- `client_id`: `0a9f8dd9-9f13-4138-abf7-566f30886cf1`
+- `client_secret`: `ORgE1SbhnjX73A3NPk2zZjxN0fMJetKPxXsH7Hyu`
+
+**Fields to leave empty:**
+- `code` (leave empty)
+- `redirect_uri` (leave empty)
+- `scope` (optional)
+- `code_verifier` (leave empty)
+
+### **Option 2: Client Credentials Grant**
+
+**Fields to fill:**
+- `grant_type`: `client_credentials`
+- `client_id`: `0a9f8dd9-9f13-4138-abf7-566f30886cf1`
+- `client_secret`: `ORgE1SbhnjX73A3NPk2zZjxN0fMJetKPxXsH7Hyu`
+- `scope`: `server-operations` (optional)
+
+**Fields to leave empty:**
+- `code` (leave empty)
+- `refresh_token` (leave empty)
+- `redirect_uri` (leave empty)
+- `code_verifier` (leave empty)
+
+### **⚠️ Authorization Code Grant (Not Recommended for Testing)**
+
+The authorization code from your logs has already been used and will result in an `invalid_grant` error. For testing this, you need to perform a new OAuth flow:
+
+- `grant_type`: `authorization_code`
+- `code`: `[NEW_AUTHORIZATION_CODE]`
+- `redirect_uri`: `http://127.0.0.1:3090/sso/auth/callback`
+- `client_id`: `0a9f8dd9-9f13-4138-abf7-566f30886cf1`
+- `client_secret`: `ORgE1SbhnjX73A3NPk2zZjxN0fMJetKPxXsH7Hyu`
+
+## Supported Grant Types
+
+### 1. Authorization Code Grant (Most Common)
+
+Used after user authorizes your application. Exchanges authorization code for access token.
+
+**Example Request:**
+```javascript
+const response = await fetch('https://mubarokah.id/oauth/token', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/x-www-form-urlencoded'
+  },
+  body: new URLSearchParams({
+    grant_type: 'authorization_code',
+    code: 'authorization_code_from_callback',
+    redirect_uri: 'http://127.0.0.1:3090/sso/auth/callback',
+    client_id: '0a9f8dd9-9f13-4138-abf7-566f30886cf1',
+    client_secret: 'ORgE1SbhnjX73A3NPk2zZjxN0fMJetKPxXsH7Hyu'
+  })
+});
+
+const tokenData = await response.json();
+console.log('Access token:', tokenData.access_token);
+```
+
+### 2. Refresh Token Grant
+
+Used to obtain new access tokens when current token expires.
+
+**Example Request:**
+```javascript
+const response = await fetch('https://mubarokah.id/oauth/token', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/x-www-form-urlencoded'
+  },
+  body: new URLSearchParams({
+    grant_type: 'refresh_token',
+    refresh_token: 'def502007283433111c7d0723e7683fd204977ccb0f679666ccd96fbf9385cda625bfe318102cf78245d44c8cb85818bc30b29ba74c25ccf1e8c85c5acbefcea8ee25c7b0d3f86e56e979c4a684c7d3276393c154577276e724c5f8f7f2aae592827f455e689d3a422fa85ea74af66e6c5f6a71d9ef8fcd5d0ebe3615cb7efdaa1771e3512c7db0562d63ac9e1cd28d1ce1c7148d667efaaaef9d49774a913f88438a7d57681119cb01eff80b3ad90c003ecd751852ee447ef232ada4789d684f802eeaa29ec35d06b7dfb3b4993171550e3625ff2f56b9157d5b565845f99575e70abd8c9b6d4ddf9e85fdd909b1cda38278147a021e6e2e6e18f9fcb053cb116e62fb5a4a2db50d3640da8d1848e6ea8fae43d334dac942bb374ecb84e89d4b793f77208c9a56c1a3ec76352e14d93cb888482cc91984747dd5f988bc2c416b23f3ebc3495ec919f540968807fff982e1066eedfca74ec0edc423bb13b36ecde2d73f87e8fa83f4bc3f3da36eb210c4a4bf30731774eac51807ae0b4cbf3fa4864254898427ce35b07b281505555668a6c364b2a9cbdeb02f2f0186c',
+    client_id: '0a9f8dd9-9f13-4138-abf7-566f30886cf1',
+    client_secret: 'ORgE1SbhnjX73A3NPk2zZjxN0fMJetKPxXsH7Hyu'
+  })
+});
+
+const newTokens = await response.json();
+```
+
+### 3. Client Credentials Grant
+
+For machine-to-machine (M2M) authentication, without user involvement.
+
+**Example Request:**
+```javascript
+const response = await fetch('https://mubarokah.id/oauth/token', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/x-www-form-urlencoded'
+  },
+  body: new URLSearchParams({
+    grant_type: 'client_credentials',
+    client_id: '0a9f8dd9-9f13-4138-abf7-566f30886cf1',
+    client_secret: 'ORgE1SbhnjX73A3NPk2zZjxN0fMJetKPxXsH7Hyu',
+    scope: 'server-operations' // optional
+  })
+});
+
+const appToken = await response.json();
+```
+
+## Example Success Response
+
+```json
+{
+  "token_type": "Bearer",
+  "expires_in": 86400,
+  "access_token": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "refresh_token": "def5020023761949f076f069874c92d8...",
+  "scope": "view-user detail-user"
+}
+```
+
+## Error Response
+
+If the request fails, it will return a JSON error response:
+
 ```json
 {
   "error": "invalid_grant",
-  "error_description": "The provided authorization grant (e.g., authorization code, resource owner credentials) or refresh token is invalid, expired, revoked, does not match the redirection URI used in the authorization request, or was issued to another client.",
-  "message": "The provided authorization grant (e.g., authorization code, resource owner credentials) or refresh token is invalid, expired, revoked, does not match the redirection URI used in the authorization request, or was issued to another client.",
-  "hint": "Check the authorization code or refresh token and try again."
+  "error_description": "The provided authorization grant is invalid, expired, revoked, does not match the redirection URI used in the authorization request, or was issued to another client.",
+  "message": "The provided authorization grant is invalid or expired.",
+  "hint": "Check the authorization code and try again."
 }
 ```
-Refer to the [Error Codes section](../error-codes) for a comprehensive list of possible OAuth error codes returned by this endpoint.
+
+## Common Error Codes
+
+| Error Code | Description | Solution |
+|------------|-------------|----------|
+| `invalid_request` | Missing or malformed parameters | Check all required parameters |
+| `invalid_client` | Client authentication failed | Verify `client_id` and `client_secret` |
+| `invalid_grant` | Authorization grant invalid/expired | Obtain new authorization code |
+| `unauthorized_client` | Client not authorized for this grant type | Check client configuration |
+| `unsupported_grant_type` | Grant type not supported | Use: `authorization_code`, `refresh_token`, or `client_credentials` |
+| `invalid_scope` | Requested scope is invalid | Check available scopes |
+
+## Security Best Practices
+
+<Warning>
+**Never expose `client_secret` in client-side code!** `client_secret` must be stored securely on your server.
+</Warning>
+
+1. **Store credentials securely using environment variables**
+2. **Use HTTPS for all OAuth communications**
+3. **Implement proper error handling**
+4. **Validate state parameter for CSRF protection**
+5. **Rotate credentials regularly**
+6. **Monitor token usage for suspicious activity**
+7. **Implement token refresh logic**
+8. **Use PKCE for public clients**
