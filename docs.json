@@ -1,6 +1,6 @@
 {
   "$schema": "https://mintlify.com/docs.json",
-  "name": "Mubarokah ID API Documentation",
+  "name": "Mubarokah ID Documentation",
   "description": "Complete OAuth 2.0 integration guide and API reference for Mubarokah ID authentication service. Secure, scalable, and developer-friendly authentication for your applications.",
   "theme": "mint",
   "logo": {
@@ -31,7 +31,7 @@
     "links": [
       {
         "label": "Support",
-        "href": "mailto:hey@mubarokah.com"
+        "href": "https://s.id/023w4"
       }
     ],
     "primary": {
@@ -43,11 +43,6 @@
   "navigation": {
     "global": {
       "anchors": [
-        {
-          "anchor": "Documentation",
-          "href": "https://docs.mubarokah.id",
-          "icon": "book-open-cover"
-        },
         {
           "anchor": "Community",
           "href": "https://chat.whatsapp.com/HQtyJMqfqq41KlrHLCvcFZ",
@@ -161,16 +156,16 @@
   },
   "seo": {
     "metatags": {
-      "og:title": "Mubarokah ID API Documentation - OAuth 2.0 Integration Guide",
+      "og:title": "Mubarokah ID Documentation - OAuth 2.0 Integration Guide",
       "og:description": "Complete OAuth 2.0 integration guide and API reference for Mubarokah ID authentication service. Secure, scalable, and developer-friendly authentication.",
-      "og:image": "https://docs.mubarokah.id/images/og-image.png",
+      "og:image": "https://mubarokah-id-storage.s3.ap-southeast-3.amazonaws.com/assets/images/docs-og-image.png",
       "og:url": "https://docs.mubarokah.id",
       "og:type": "website",
-      "og:site_name": "Mubarokah ID API Documentation",
+      "og:site_name": "Mubarokah ID Documentation",
       "twitter:card": "summary_large_image",
-      "twitter:title": "Mubarokah ID API Documentation",
+      "twitter:title": "Mubarokah ID Documentation",
       "twitter:description": "Complete OAuth 2.0 integration guide and API reference for Mubarokah ID authentication service.",
-      "twitter:image": "https://docs.mubarokah.id/images/og-image.png",
+      "twitter:image": "https://mubarokah-id-storage.s3.ap-southeast-3.amazonaws.com/assets/images/docs-og-image.png",
       "twitter:site": "@mubarokah_id",
       "keywords": "OAuth 2.0, authentication, API, Mubarokah ID, login, SSO, single sign-on, security, integration guide",
       "author": "Mubarokah",
