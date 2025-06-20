@@ -24,26 +24,30 @@
       "display": "interactive"
     },
     "examples": {
-      "languages": ["curl", "javascript", "python", "php", "go", "java"]
+      "languages": ["curl", "javascript", "python", "php", "java", "go"]
     }
   },
   "navbar": {
     "links": [
       {
-        "label": "Community",
-        "href": "https://chat.whatsapp.com/HQtyJMqfqq41KlrHLCvcFZ",
-        "icon": "whatsapp"
-      },
-      {
-        "label": "Blog",
-        "href": "https://mubarokah.com/posts",
-        "icon": "newspaper"
+        "label": "Support",
+        "href": "mailto:hey@mubarokah.com"
       }
-    ]
+    ],
+    "primary": {
+      "type": "button",
+      "label": "Dashboard",
+      "href": "https://mubarokah.id/dashboard"
+    }
   },
   "navigation": {
     "global": {
       "anchors": [
+        {
+          "anchor": "Documentation",
+          "href": "https://docs.mubarokah.id",
+          "icon": "book-open-cover"
+        },
         {
           "anchor": "Community",
           "href": "https://chat.whatsapp.com/HQtyJMqfqq41KlrHLCvcFZ",
@@ -75,12 +79,7 @@
               "core-concepts/prerequisites",
               "core-concepts/scopes-and-permissions"
             ]
-          }
-        ]
-      },
-      {
-        "tab": "API Reference",
-        "groups": [
+          },
           {
             "group": "Integration Guides",
             "pages": [
@@ -93,26 +92,6 @@
                   "guides/framework-integration/python"
                 ]
               }
-            ]
-          },
-          {
-            "group": "OAuth Endpoints",
-            "pages": [
-              "api-reference/oauth/authorize",
-              "api-reference/oauth/token"
-            ]
-          },
-          {
-            "group": "User API",
-            "pages": [
-              "api-reference/user/get-user-info",
-              "api-reference/user/get-user-details"
-            ]
-          },
-          {
-            "group": "Reference",
-            "pages": [
-              "api-reference/error-codes"
             ]
           },
           {
@@ -138,6 +117,31 @@
               "troubleshooting/error-resolution",
               "troubleshooting/runbooks",
               "operations/monitoring-debugging"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
+        "groups": [
+          {
+            "group": "OAuth Endpoints",
+            "pages": [
+              "api-reference/oauth/authorize",
+              "api-reference/oauth/token"
+            ]
+          },
+          {
+            "group": "User API",
+            "pages": [
+              "api-reference/user/get-user-info",
+              "api-reference/user/get-user-details"
+            ]
+          },
+          {
+            "group": "Reference",
+            "pages": [
+                "api-reference/error-codes"
             ]
           }
         ]
