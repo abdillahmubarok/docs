@@ -1,0 +1,315 @@
+---
+title: Load Testing OAuth Integrations
+description: Considerations and example scenarios for load testing your Mubarokah ID OAuth 2.0 client integration.
+---
+
+# Load Testing OAuth Integrations
+
+Load testing helps you understand how your application (and its integration with Mubarokah ID) performs under anticipated user loads. While you generally **should not** load test Mubarokah ID's production servers directly without explicit permission and coordination, you can and should load test **your application's components** that are involved in the OAuth flow.
+
+<Callout type="warning" title="Do Not Load Test Mubarokah ID Directly">
+  Directly load testing third-party services like Mubarokah ID without prior agreement can violate their terms of service and may be mistaken for a denial-of-service attack. Focus load tests on your own infrastructure and how it handles simulated responses or interactions.
+</Callout>
+
+## Objectives of Load Testing Your Integration
+
+-   **Identify Bottlenecks:** Find performance bottlenecks in your application's OAuth callback handling, token exchange logic, session creation, and user data retrieval/storage after authentication.
+-   **Verify Scalability:** Ensure your application can scale to handle a high number of concurrent OAuth logins and subsequent API calls (via Mubarokah ID, mocked).
+-   **Assess Resource Usage:** Monitor CPU, memory, database, and network usage on your servers under load.
+-   **Measure Response Times:** Track response times for critical parts of the flow, such as your callback endpoint processing time.
+-   **Determine Failure Points:** Understand at what load levels your system starts to degrade or fail.
+
+## What to Load Test in Your Application
+
+-   **Your `/oauth/callback` Endpoint:** This is a critical endpoint. Simulate many users hitting this endpoint with valid (mocked) authorization codes and states. Measure:
+    -   Response time of the callback handler.
+    -   Success rate of token exchange (if mocking the Mubarokah ID token endpoint).
+    -   Time taken for local user lookup/creation and session establishment.
+-   **Your Token Storage/Management:** If you're storing tokens, test the performance of your storage solution (e.g., Redis, database) under high read/write loads.
+-   **Authenticated API Calls (Mocked Mubarokah ID):** If your application makes frequent calls to Mubarokah ID's resource APIs (e.g., `/api/user`) after login, load test these parts of your application by mocking the Mubarokah ID API responses. This tests your application's ability to handle many authenticated users making internal calls that might rely on fetched user data.
+
+## Simulating Mubarokah ID for Load Tests
+
+To avoid hitting Mubarokah ID's actual servers, you'll need to simulate its behavior:
+
+1.  **Mock OAuth Endpoints:**
+    -   **Authorization Endpoint (`/oauth/authorize`):** For load testing your callback, you don't need to simulate the Mubarokah ID login UI. Instead, your load test script can directly generate requests to your callback endpoint as if Mubarokah ID had redirected there with a code and state.
+    -   **Token Endpoint (`/oauth/token`):** Create a mock server or endpoint within your test environment that mimics Mubarokah ID's token endpoint.
+        -   It should accept an authorization code (and PKCE verifier if applicable) and return a realistic-looking (but fake) access token, refresh token, and `expires_in` value.
+        -   It can also simulate error responses (e.g., `invalid_grant`) to test your application's error handling under load.
+    -   **User Info Endpoint (`/api/user`):** Create a mock for this to return sample user data when called with a (fake) access token.
+
+2.  **Data Generation:**
+    -   Generate a large set of unique, realistic (but fake) authorization codes, states, and user IDs for your load test.
+
+## Load Testing Tools
+
+-   **k6 (k6.io):** A modern load testing tool for developers, scriptable in JavaScript.
+-   **JMeter (apache.org):** A popular open-source Java-based load testing tool with a GUI.
+-   **Locust (locust.io):** An open-source Python-based load testing tool.
+-   **Artillery.io:** A modern load testing toolkit, scriptable in JavaScript or YAML.
+
+## Example Load Test Scenario (Conceptual k6 Script)
+
+This script focuses on load testing **your application's callback endpoint**, assuming Mubarokah ID's token endpoint is mocked.
+
+```javascript
+import http from 'k6/http';
+import { check, sleep } from 'k6';
+import { SharedArray } from 'k6/data';
+
+// --- Test Configuration ---
+export const options = {
+  stages: [
+    { duration: '1m', target: 50 },  // Ramp up to 50 virtual users over 1 minute
+    { duration: '3m', target: 50 },  // Stay at 50 VU for 3 minutes
+    { duration: '1m', target: 0 },   // Ramp down to 0 VU over 1 minute
+  ],
+  thresholds: {
+    'http_req_duration{name:Callback}': ['p(95)<500'], // 95% of callback requests < 500ms
+    'http_req_failed{name:Callback}': ['rate<0.01'],   // Less than 1% failed callback requests
+    // 'http_req_duration{name:MockTokenExchange}': ['p(95)<100'], // If mocking token exchange
+  },
+};
+
+// --- Test Data (Conceptual - generate more realistically) ---
+const users = new SharedArray('users_data', function () {
+  const data = [];
+  for (let i = 0; i < 1000; i++) {
+    data.push({
+      authCode: `mockAuthCode\${i}-\${Math.random().toString(36).substring(7)}`,
+      state: `mockState\${i}-\${Math.random().toString(36).substring(7)}`,
+      // pkceVerifier: `mockVerifier\${i}` // If testing PKCE
+    });
+  }
+  return data;
+});
+
+// --- Mock Mubarokah ID Token Endpoint (Run this as a separate server in your test env) ---
+// This is a conceptual mock. In a real test, you'd have a simple server (e.g., Express.js)
+// that responds to POST /mock/oauth/token
+const MOCK_TOKEN_ENDPOINT = 'http://localhost:3001/mock/oauth/token'; // Your mock server
+const YOUR_APP_CALLBACK_URL = 'https://yourapp.com/auth/mubarokah/callback';
+
+// --- Main Test Function (Virtual User) ---
+export default function () {
+  const user = users[Math.floor(Math.random() * users.length)];
+
+  // 1. Simulate Mubarokah ID redirecting to your callback
+  // Your app's session middleware should handle storing/retrieving the state for validation.
+  // For the load test, you might need to pre-populate session storage if your app expects it,
+  // or your app might handle cases where state is missing if it's a direct hit without prior session.
+  // This part highly depends on your app's session and state validation logic.
+  // For simplicity, we assume the callback can be hit directly with code & state.
+
+  const callbackUrl = `${YOUR_APP_CALLBACK_URL}?code=${user.authCode}&state=${user.state}`;
+  const callbackResponse = http.get(callbackUrl, {
+    tags: { name: 'Callback' },
+    // If your callback expects a session cookie with the state, you'd need to manage cookies.
+  });
+
+  check(callbackResponse, {
+    'Callback successful (e.g., redirects or returns 200)': (r) => r.status === 200 || r.status === 302,
+  });
+
+  // Inside your callback handler (which is being tested), it would then:
+  // - Validate state (needs session pre-population or mock for test)
+  // - Make a POST request to Mubarokah's /oauth/token.
+  //   For load testing, this should go to your MOCK_TOKEN_ENDPOINT.
+  //   This call is part of what callbackResponse.timings.duration measures.
+
+  // Example of how your app *might* call the (mocked) token endpoint:
+  /*
+  if (callbackResponse.status === 200 || callbackResponse.status === 302) { // Assuming callback leads to token exchange
+    // This part is what your server does. The load test measures the whole callback.
+    const tokenPayload = {
+      grant_type: 'authorization_code',
+      code: user.authCode,
+      redirect_uri: YOUR_APP_CALLBACK_URL, // Or the original redirect URI
+      client_id: 'your_client_id',
+      client_secret: 'your_client_secret_FOR_MOCK_ONLY', // Use mock credentials for mock server
+      // code_verifier: user.pkceVerifier // If using PKCE
+    };
+    const tokenResponse = http.post(MOCK_TOKEN_ENDPOINT, tokenPayload, {
+      tags: { name: 'MockTokenExchange' },
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    });
+    check(tokenResponse, {
+      'Mock token exchange successful': (r) => r.status === 200 && r.json('access_token') !== '',
+    });
+  }
+  */
+
+  sleep(1); // Think time between iterations for a VU
+}
+```
+<Callout type="important" title="Focus of the k6 Script">
+The k6 script above primarily tests **your application's callback endpoint**. The commented-out section for `MockTokenExchange` illustrates what your application *would do internally*. Your mock token server needs to be running separately to respond to these calls from your application.
+</Callout>
+
+## Analyzing Results
+
+-   **Error Rates:** Pay close attention to HTTP error rates (4xx, 5xx) from your application and any mocked downstream services.
+-   **Response Times:** Look at average, median (p50), p90, p95, and p99 response times for key transactions.
+-   **Throughput:** How many requests per second can your system handle?
+-   **Resource Utilization:** Correlate performance metrics with CPU, memory, and I/O on your servers.
+
+Load testing your Mubarokah ID integration (by testing your components and mocking Mubarokah ID) is vital for ensuring a smooth and reliable experience for your users, especially during peak times.
+
+---
+title: Load Testing OAuth Integrations
+description: Considerations and example scenarios for load testing your Mubarokah ID OAuth 2.0 client integration.
+---
+
+# Load Testing OAuth Integrations
+
+Load testing helps you understand how your application (and its integration with Mubarokah ID) performs under anticipated user loads. While you generally **should not** load test Mubarokah ID's production servers directly without explicit permission and coordination, you can and should load test **your application's components** that are involved in the OAuth flow.
+
+<Callout type="warning" title="Do Not Load Test Mubarokah ID Directly">
+  Directly load testing third-party services like Mubarokah ID without prior agreement can violate their terms of service and may be mistaken for a denial-of-service attack. Focus load tests on your own infrastructure and how it handles simulated responses or interactions.
+</Callout>
+
+## Objectives of Load Testing Your Integration
+
+-   **Identify Bottlenecks:** Find performance bottlenecks in your application's OAuth callback handling, token exchange logic, session creation, and user data retrieval/storage after authentication.
+-   **Verify Scalability:** Ensure your application can scale to handle a high number of concurrent OAuth logins and subsequent API calls (via Mubarokah ID, mocked).
+-   **Assess Resource Usage:** Monitor CPU, memory, database, and network usage on your servers under load.
+-   **Measure Response Times:** Track response times for critical parts of the flow, such as your callback endpoint processing time.
+-   **Determine Failure Points:** Understand at what load levels your system starts to degrade or fail.
+
+## What to Load Test in Your Application
+
+-   **Your `/oauth/callback` Endpoint:** This is a critical endpoint. Simulate many users hitting this endpoint with valid (mocked) authorization codes and states. Measure:
+    -   Response time of the callback handler.
+    -   Success rate of token exchange (if mocking the Mubarokah ID token endpoint).
+    -   Time taken for local user lookup/creation and session establishment.
+-   **Your Token Storage/Management:** If you're storing tokens, test the performance of your storage solution (e.g., Redis, database) under high read/write loads.
+-   **Authenticated API Calls (Mocked Mubarokah ID):** If your application makes frequent calls to Mubarokah ID's resource APIs (e.g., `/api/user`) after login, load test these parts of your application by mocking the Mubarokah ID API responses. This tests your application's ability to handle many authenticated users making internal calls that might rely on fetched user data.
+
+## Simulating Mubarokah ID for Load Tests
+
+To avoid hitting Mubarokah ID's actual servers, you'll need to simulate its behavior:
+
+1.  **Mock OAuth Endpoints:**
+    -   **Authorization Endpoint (`/oauth/authorize`):** For load testing your callback, you don't need to simulate the Mubarokah ID login UI. Instead, your load test script can directly generate requests to your callback endpoint as if Mubarokah ID had redirected there with a code and state.
+    -   **Token Endpoint (`/oauth/token`):** Create a mock server or endpoint within your test environment that mimics Mubarokah ID's token endpoint.
+        -   It should accept an authorization code (and PKCE verifier if applicable) and return a realistic-looking (but fake) access token, refresh token, and `expires_in` value.
+        -   It can also simulate error responses (e.g., `invalid_grant`) to test your application's error handling under load.
+    -   **User Info Endpoint (`/api/user`):** Create a mock for this to return sample user data when called with a (fake) access token.
+
+2.  **Data Generation:**
+    -   Generate a large set of unique, realistic (but fake) authorization codes, states, and user IDs for your load test.
+
+## Load Testing Tools
+
+-   **k6 (k6.io):** A modern load testing tool for developers, scriptable in JavaScript.
+-   **JMeter (apache.org):** A popular open-source Java-based load testing tool with a GUI.
+-   **Locust (locust.io):** An open-source Python-based load testing tool.
+-   **Artillery.io:** A modern load testing toolkit, scriptable in JavaScript or YAML.
+
+## Example Load Test Scenario (Conceptual k6 Script)
+
+This script focuses on load testing **your application's callback endpoint**, assuming Mubarokah ID's token endpoint is mocked.
+
+```javascript
+// import http from 'k6/http';
+// import { check, sleep } from 'k6';
+// import { SharedArray } from 'k6/data';
+
+// // --- Test Configuration ---
+// export const options = {
+//   stages: [
+//     { duration: '1m', target: 50 },  // Ramp up to 50 virtual users over 1 minute
+//     { duration: '3m', target: 50 },  // Stay at 50 VU for 3 minutes
+//     { duration: '1m', target: 0 },   // Ramp down to 0 VU over 1 minute
+//   ],
+//   thresholds: {
+//     'http_req_duration{name:Callback}': ['p(95)<500'], // 95% of callback requests < 500ms
+//     'http_req_failed{name:Callback}': ['rate<0.01'],   // Less than 1% failed callback requests
+//     // 'http_req_duration{name:MockTokenExchange}': ['p(95)<100'], // If mocking token exchange
+//   },
+// };
+
+// // --- Test Data (Conceptual - generate more realistically) ---
+// const users = new SharedArray('users_data', function () {
+//   const data = [];
+//   for (let i = 0; i < 1000; i++) {
+//     data.push({
+//       authCode: `mockAuthCode\${i}-\${Math.random().toString(36).substring(7)}`,
+//       state: `mockState\${i}-\${Math.random().toString(36).substring(7)}`,
+//       // pkceVerifier: `mockVerifier\${i}` // If testing PKCE
+//     });
+//   }
+//   return data;
+// });
+
+// // --- Mock Mubarokah ID Token Endpoint (Run this as a separate server in your test env) ---
+// // This is a conceptual mock. In a real test, you'd have a simple server (e.g., Express.js)
+// // that responds to POST /mock/oauth/token
+// const MOCK_TOKEN_ENDPOINT = 'http://localhost:3001/mock/oauth/token'; // Your mock server
+// const YOUR_APP_CALLBACK_URL = 'https://yourapp.com/auth/mubarokah/callback';
+
+// // --- Main Test Function (Virtual User) ---
+// export default function () {
+//   const user = users[Math.floor(Math.random() * users.length)];
+
+//   // 1. Simulate Mubarokah ID redirecting to your callback
+//   // Your app's session middleware should handle storing/retrieving the state for validation.
+//   // For the load test, you might need to pre-populate session storage if your app expects it,
+//   // or your app might handle cases where state is missing if it's a direct hit without prior session.
+//   // This part highly depends on your app's session and state validation logic.
+//   // For simplicity, we assume the callback can be hit directly with code & state.
+
+//   const callbackUrl = `${YOUR_APP_CALLBACK_URL}?code=${user.authCode}&state=${user.state}`;
+//   const callbackResponse = http.get(callbackUrl, {
+//     tags: { name: 'Callback' },
+//     // If your callback expects a session cookie with the state, you'd need to manage cookies.
+//   });
+
+//   check(callbackResponse, {
+//     'Callback successful (e.g., redirects or returns 200)': (r) => r.status === 200 || r.status === 302,
+//   });
+
+//   // Inside your callback handler (which is being tested), it would then:
+//   // - Validate state (needs session pre-population or mock for test)
+//   // - Make a POST request to Mubarokah's /oauth/token.
+//   //   For load testing, this should go to your MOCK_TOKEN_ENDPOINT.
+//   //   This call is part of what callbackResponse.timings.duration measures.
+
+//   // Example of how your app *might* call the (mocked) token endpoint:
+//   /*
+//   if (callbackResponse.status === 200 || callbackResponse.status === 302) { // Assuming callback leads to token exchange
+//     // This part is what your server does. The load test measures the whole callback.
+//     const tokenPayload = {
+//       grant_type: 'authorization_code',
+//       code: user.authCode,
+//       redirect_uri: YOUR_APP_CALLBACK_URL, // Or the original redirect URI
+//       client_id: 'your_client_id',
+//       client_secret: 'your_client_secret_FOR_MOCK_ONLY', // Use mock credentials for mock server
+//       // code_verifier: user.pkceVerifier // If using PKCE
+//     };
+//     const tokenResponse = http.post(MOCK_TOKEN_ENDPOINT, tokenPayload, {
+//       tags: { name: 'MockTokenExchange' },
+//       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+//     });
+//     check(tokenResponse, {
+//       'Mock token exchange successful': (r) => r.status === 200 && r.json('access_token') !== '',
+//     });
+//   }
+//   */
+
+//   sleep(1); // Think time between iterations for a VU
+// }
+```
+<Callout type="important" title="Focus of the k6 Script">
+The k6 script above primarily tests **your application's callback endpoint**. The commented-out section for `MockTokenExchange` illustrates what your application *would do internally*. Your mock token server needs to be running separately to respond to these calls from your application.
+</Callout>
+
+## Analyzing Results
+
+-   **Error Rates:** Pay close attention to HTTP error rates (4xx, 5xx) from your application and any mocked downstream services.
+-   **Response Times:** Look at average, median (p50), p90, p95, and p99 response times for key transactions.
+-   **Throughput:** How many requests per second can your system handle?
+-   **Resource Utilization:** Correlate performance metrics with CPU, memory, and I/O on your servers.
+
+Load testing your Mubarokah ID integration (by testing your components and mocking Mubarokah ID) is vital for ensuring a smooth and reliable experience for your users, especially during peak times.

@@ -1,0 +1,154 @@
+---
+title: OAuth 2.0 Security Checklist
+description: Essential security checks and best practices for your Mubarokah ID OAuth 2.0 integration.
+---
+
+# OAuth 2.0 Security Checklist
+
+Implementing OAuth 2.0 securely is crucial for protecting user data and your application. This checklist outlines key security considerations for your Mubarokah ID integration.
+
+## ✅ Authentication Security
+
+These practices ensure the authentication process itself is secure.
+
+<Checklist>
+  <Item checked={true}>
+    **Always use HTTPS (TLS):** All communications with Mubarokah ID, especially your `redirect_uri` and calls to the token endpoint, must occur over HTTPS. This prevents man-in-the-middle attacks.
+    ```javascript
+    // Example: Enforce HTTPS in your client application (conceptual)
+    // if (location.protocol !== 'https:' && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') {
+    //   location.replace(`https:\${location.href.substring(location.protocol.length)}`);
+    // }
+    ```
+  </Item>
+  <Item checked={true}>
+    **Implement CSRF Protection with the `state` Parameter:**
+    Generate a unique, unguessable `state` value for each authorization request. Store this value in the user's session. When Mubarokah ID redirects back to your `redirect_uri`, compare the `state` value returned with the one stored in the session. If they don't match, reject the request as it could indicate a CSRF attack.
+    ```javascript
+    // 1. Generate and store state before redirecting
+    // const state = crypto.randomBytes(16).toString('hex'); // Node.js example
+    // req.session.oauthState = state; // Store in session
+    // const authUrl = `https://mubarokah.id/oauth/authorize?response_type=code&client_id=...&state=\${state}...`;
+
+    // 2. Verify state on callback
+    // const callbackState = req.query.state;
+    // const sessionState = req.session.oauthState;
+    // if (!callbackState || callbackState !== sessionState) {
+    //   // Abort: possible CSRF attack
+    //   throw new Error("Invalid state parameter.");
+    // }
+    // delete req.session.oauthState; // Clean up
+    ```
+  </Item>
+  <Item checked={true}>
+    **Validate `redirect_uri`:** Ensure your `redirect_uri` is pre-registered with Mubarokah ID and that your application strictly validates that the redirect occurs only to registered URIs. The Mubarokah ID server will also enforce this.
+  </Item>
+  <Item checked={true}>
+    **Implement PKCE (Proof Key for Code Exchange) for Public Clients:**
+    If your application is a public client (e.g., a mobile app or a Single Page Application that cannot securely store a `client_secret`), use PKCE (RFC 7636). This involves:
+    1.  Client creates a `code_verifier`.
+    2.  Client creates a `code_challenge` (typically SHA256 hash of `code_verifier`, then Base64URL-encoded).
+    3.  Client sends `code_challenge` and `code_challenge_method` (`S256`) in the authorization request.
+    4.  Client sends the original `code_verifier` in the token exchange request.
+    The server then verifies the `code_verifier` against the stored `code_challenge`.
+    ```javascript
+    // Conceptual PKCE Generation (Browser - Web Crypto API)
+    // async function generatePkceChallenge() {
+    //   const verifier = generateRandomString(128); // Generate a secure random string
+    //   sessionStorage.setItem('pkce_code_verifier', verifier);
+    //   const encoder = new TextEncoder();
+    //   const data = encoder.encode(verifier);
+    //   const digest = await window.crypto.subtle.digest('SHA-256', data);
+    //   const base64UrlChallenge = btoa(String.fromCharCode(...new Uint8Array(digest)))
+    //     .replace(/\+/g, '-')
+    //     .replace(/\//g, '_')
+    //     .replace(/=+$/, '');
+    //   return base64UrlChallenge;
+    // }
+    // // In authorization request:
+    // // params.append('code_challenge', await generatePkceChallenge());
+    // // params.append('code_challenge_method', 'S256');
+
+    // // In token request (server-side):
+    // // const codeVerifier = session.pkce_code_verifier; // Retrieve stored verifier
+    // // bodyParams.append('code_verifier', codeVerifier);
+    ```
+  </Item>
+  <Item checked={true}>
+    **Secure Client Secret Storage:** Your `client_secret` must be kept confidential.
+    - For web applications with a backend, store it securely on the server (e.g., environment variables, secrets management system). **Never expose it in client-side code.**
+    - For public clients that cannot protect a secret, rely on PKCE and do not use a client secret in the token exchange if the authorization server supports it for public clients.
+  </Item>
+  <Item checked={true}>
+    **Authenticate Clients:** Mubarokah ID authenticates clients during the token exchange using the `client_id` and `client_secret` (either in the request body or via HTTP Basic Authentication header).
+  </Item>
+</Checklist>
+
+## 🔐 Token Security
+
+Handle access tokens and refresh tokens with care.
+
+<Checklist>
+  <Item checked={true}>
+    **Transmit Tokens Securely:** Always transmit tokens over HTTPS.
+  </Item>
+  <Item checked={true}>
+    **Store Tokens Securely:**
+    -   **Access Tokens (Client-Side for SPAs):** Store in memory (e.g., JavaScript variable in a closure/service). Avoid `localStorage` or `sessionStorage` due to XSS risks if your site is vulnerable. If you must use them, be aware of the risks.
+    -   **Access Tokens (Server-Side Web Apps):** Store in secure, HttpOnly, SameSite session cookies.
+    -   **Refresh Tokens:** These are powerful credentials. Store them securely on the server-side (e.g., encrypted in a database). For SPAs, if a backend-for-frontend (BFF) pattern is used, the BFF can manage refresh tokens. If not, avoid storing refresh tokens in the browser if possible; otherwise, use HttpOnly, secure cookies managed by the backend if the SPA is served from the same domain or has a secure mechanism to proxy requests.
+    -   **Mobile Apps:** Use secure storage mechanisms provided by the OS (e.g., Android Keystore, iOS Keychain).
+  </Item>
+  <Item checked={true}>
+    **Use Short-Lived Access Tokens:** Mubarokah ID issues access tokens with a defined lifetime (e.g., 24 hours). This limits the window of opportunity if a token is compromised.
+  </Item>
+  <Item checked={true}>
+    **Use Refresh Tokens to Get New Access Tokens:** When an access token expires, use the refresh token (if available) to obtain a new access token without requiring user re-authentication.
+  </Item>
+  <Item checked={true}>
+    **Handle Token Expiry Gracefully:** Your application should detect when an access token has expired (e.g., by checking the `expires_in` value or handling a 401 error from the resource server) and attempt to refresh it. If refresh fails or no refresh token is available, prompt the user to log in again.
+  </Item>
+  <Item checked={true}>
+    **Do Not Leak Tokens:** Be careful not to log tokens or include them in URLs (unless it's the short-lived authorization code in the redirect from `/oauth/authorize`).
+  </Item>
+  <Item checked={true}>
+    **Scope Tokens Appropriately:** Request only the scopes your application needs. Access tokens will be bound to these granted scopes.
+  </Item>
+  <Item checked={true}>
+    **Implement Token Revocation (If Supported):** If Mubarokah ID provides an endpoint for token revocation, use it when a user logs out of your application or revokes consent, to invalidate the tokens immediately.
+  </Item>
+</Checklist>
+
+## 🚨 Input Validation & Sanitization
+
+Validate all inputs, especially those from external sources like redirect parameters.
+
+<Checklist>
+  <Item checked={true}>
+    **Validate Authorization Code:** Ensure the `code` received on callback is not empty and is in the expected format before exchanging it.
+  </Item>
+  <Item checked={true}>
+    **Validate State Parameter:** As mentioned above, strictly validate the `state` parameter on callback.
+  </Item>
+  <Item checked={true}>
+    **Validate Token Response:** After exchanging the code for tokens, validate the response from the token endpoint. Check for expected fields like `access_token`, `token_type` (should be "Bearer"), and `expires_in`.
+    ```php
+    // Conceptual PHP Server-Side Validation of Token Response
+    // $tokenData = json_decode($responseBody, true);
+    // if (!isset($tokenData['access_token'], $tokenData['token_type'], $tokenData['expires_in'])) {
+    //     throw new Exception("Invalid token response format.");
+    // }
+    // if ($tokenData['token_type'] !== 'Bearer') {
+    //     throw new Exception("Unsupported token type.");
+    // }
+    // if (!is_numeric($tokenData['expires_in']) || $tokenData['expires_in'] <= 0) {
+    //     throw new Exception("Invalid expires_in value.");
+    // }
+    ```
+  </Item>
+  <Item checked={true}>
+    **Sanitize Error Parameters:** If error parameters (`error`, `error_description`) are received on callback, sanitize them before displaying them to the user to prevent XSS if these values are reflected.
+  </Item>
+</Checklist>
+
+This checklist provides a starting point. Always refer to the latest OAuth 2.0 security best practices (e.g., [OAuth 2.0 Security Best Current Practice by IETF](https://datatracker.ietf.org/doc/html/draft-ietf-oauth-security-topics)) for comprehensive guidance.

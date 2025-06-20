@@ -1,0 +1,520 @@
+---
+title: Laravel (PHP) Integration
+description: Guide to integrating Mubarokah ID OAuth 2.0 with a Laravel application.
+---
+
+# Laravel (PHP) Integration Guide
+
+This guide provides a production-ready example of how to integrate Mubarokah ID OAuth 2.0 authentication into a Laravel application. It covers creating a service provider, handling OAuth callbacks, and managing user tokens.
+
+## Prerequisites
+
+-   Laravel Framework installed.
+-   Composer for package management.
+-   Guzzle HTTP Client (or similar): `composer require guzzlehttp/guzzle`
+-   Basic understanding of Laravel Service Providers, Controllers, and Eloquent.
+
+## Configuration
+
+First, add your Mubarokah ID client credentials and settings to your `config/services.php` file and `.env` file.
+
+**`.env` example:**
+```env
+MUBAROKAH_CLIENT_ID=your_laravel_client_id
+MUBAROKAH_CLIENT_SECRET=your_laravel_client_secret
+MUBAROKAH_REDIRECT_URI=https://yourlaravelapp.com/auth/mubarokah/callback
+MUBAROKAH_BASE_URL=https://mubarokah.id
+```
+
+**`config/services.php`:**
+```php
+<?php
+
+return [
+    // ... other services
+
+    'mubarokah' => [
+        'client_id' => env('MUBAROKAH_CLIENT_ID'),
+        'client_secret' => env('MUBAROKAH_CLIENT_SECRET'),
+        'redirect' => env('MUBAROKAH_REDIRECT_URI'),
+        'base_url' => env('MUBAROKAH_BASE_URL', 'https://mubarokah.id'),
+        'scopes' => ['view-user'], // Default scopes to request
+    ],
+];
+```
+
+## Mubarokah OAuth Service
+
+Create a service class to handle the OAuth logic.
+
+**`app/Services/MubarokahOAuthService.php`:**
+```php
+<?php
+
+namespace App\Services;
+
+use GuzzleHttp\Client as HttpClient;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Str;
+use App\Exceptions\MubarokahOAuthException; // Custom exception
+
+class MubarokahOAuthService
+{
+    protected HttpClient $httpClient;
+    protected array $config;
+
+    public function __construct(HttpClient $httpClient)
+    {
+        $this->httpClient = $httpClient;
+        $this->config = config('services.mubarokah');
+    }
+
+    /**
+     * Generate authorization URL with PKCE support.
+     *
+     * @param array $scopes
+     * @param bool $usePKCE
+     * @return array ['url' => string, 'state' => string, 'code_verifier' => string|null]
+     */
+    public function getAuthorizationUrl(array $scopes = [], bool $usePKCE = true): array
+    {
+        $state = Str::random(40);
+        $finalScopes = !empty($scopes) ? $scopes : $this->config['scopes'];
+
+        $params = [
+            'response_type' => 'code',
+            'client_id' => $this->config['client_id'],
+            'redirect_uri' => $this->config['redirect'],
+            'scope' => implode(' ', $finalScopes),
+            'state' => $state,
+        ];
+
+        $result = ['state' => $state];
+
+        if ($usePKCE) {
+            $codeVerifier = Str::random(128);
+            // Base64 URL encode SHA256 hash of the code verifier
+            $codeChallenge = rtrim(strtr(base64_encode(hash('sha256', $codeVerifier, true)), '+/', '-_'), '=');
+
+            $params['code_challenge'] = $codeChallenge;
+            $params['code_challenge_method'] = 'S256';
+
+            $result['code_verifier'] = $codeVerifier;
+        }
+
+        $result['url'] = $this->config['base_url'] . '/oauth/authorize?' . http_build_query($params, '', '&', PHP_QUERY_RFC3986);
+        return $result;
+    }
+
+    /**
+     * Exchange authorization code for tokens.
+     *
+     * @param string $code
+     * @param string|null $codeVerifier (for PKCE)
+     * @return array Token data
+     * @throws MubarokahOAuthException
+     */
+    public function exchangeCodeForTokens(string $code, ?string $codeVerifier = null): array
+    {
+        $params = [
+            'grant_type' => 'authorization_code',
+            'client_id' => $this->config['client_id'],
+            'client_secret' => $this->config['client_secret'],
+            'redirect_uri' => $this->config['redirect'],
+            'code' => $code,
+        ];
+
+        if ($codeVerifier) {
+            $params['code_verifier'] = $codeVerifier;
+        }
+
+        try {
+            $response = $this->httpClient->post($this->config['base_url'] . '/oauth/token', [
+                'form_params' => $params,
+                'headers' => ['Accept' => 'application/json'],
+            ]);
+
+            return json_decode((string) $response->getBody(), true);
+        } catch (\GuzzleHttp\Exception\ClientException $e) {
+            $responseBody = $e->getResponse() ? (string) $e->getResponse()->getBody() : 'No response body';
+            $errorData = json_decode($responseBody, true);
+            throw new MubarokahOAuthException(
+                $errorData['error_description'] ?? $errorData['message'] ?? 'Token exchange failed.',
+                $e->getCode(),
+                $errorData
+            );
+        }
+    }
+
+    /**
+     * Refresh access token.
+     *
+     * @param string $refreshToken
+     * @return array New token data
+     * @throws MubarokahOAuthException
+     */
+    public function refreshToken(string $refreshToken): array
+    {
+        try {
+            $response = $this->httpClient->post($this->config['base_url'] . '/oauth/token', [
+                'form_params' => [
+                    'grant_type' => 'refresh_token',
+                    'refresh_token' => $refreshToken,
+                    'client_id' => $this->config['client_id'],
+                    'client_secret' => $this->config['client_secret'],
+                    'scope' => implode(' ', $this->config['scopes']), // Optional: request same or narrower scopes
+                ],
+                'headers' => ['Accept' => 'application/json'],
+            ]);
+            return json_decode((string) $response->getBody(), true);
+        } catch (\GuzzleHttp\Exception\ClientException $e) {
+            $responseBody = $e->getResponse() ? (string) $e->getResponse()->getBody() : 'No response body';
+            $errorData = json_decode($responseBody, true);
+            throw new MubarokahOAuthException(
+                $errorData['error_description'] ?? $errorData['message'] ?? 'Token refresh failed.',
+                $e->getCode(),
+                $errorData
+            );
+        }
+    }
+
+    /**
+     * Get user information using an access token.
+     *
+     * @param string $accessToken
+     * @param bool $detailed Set to true to fetch from /api/user/details
+     * @return array User data
+     * @throws MubarokahOAuthException
+     */
+    public function getUserInfo(string $accessToken, bool $detailed = false): array
+    {
+        $endpoint = $detailed ? '/api/user/details' : '/api/user';
+        $cacheKey = "mubarokah_user_{$endpoint}_" . hash('sha256', $accessToken);
+        $cacheDuration = $detailed ? 60 : 300; // Shorter cache for detailed info
+
+        return Cache::remember($cacheKey, $cacheDuration, function () use ($accessToken, $endpoint) {
+            try {
+                $response = $this->httpClient->get($this->config['base_url'] . $endpoint, [
+                    'headers' => [
+                        'Authorization' => "Bearer {$accessToken}",
+                        'Accept' => 'application/json',
+                    ],
+                ]);
+                return json_decode((string) $response->getBody(), true);
+            } catch (\GuzzleHttp\Exception\ClientException $e) {
+                $responseBody = $e->getResponse() ? (string) $e->getResponse()->getBody() : 'No response body';
+                $errorData = json_decode($responseBody, true);
+                throw new MubarokahOAuthException(
+                    $errorData['error_description'] ?? $errorData['message'] ?? 'Failed to fetch user info.',
+                    $e->getCode(),
+                    $errorData
+                );
+            }
+        });
+    }
+}
+```
+<Info>
+Create a custom exception `App\Exceptions\MubarokahOAuthException.php` if you want more specific error handling.
+</Info>
+
+## Auth Controller
+
+Create a controller to handle the redirect to Mubarokah ID and the callback.
+
+**`app/Http/Controllers/Auth/MubarokahController.php`:**
+```php
+<?php
+
+namespace App\Http\Controllers\Auth;
+
+use App\Http\Controllers\Controller;
+use App\Services\MubarokahOAuthService;
+use App\Models\User; // Your User model
+use App\Models\MubarokahToken; // Custom model for storing tokens
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
+use App\Exceptions\MubarokahOAuthException;
+use Illuminate\Support\Facades\Session;
+
+class MubarokahController extends Controller
+{
+    protected MubarokahOAuthService $oauthService;
+
+    public function __construct(MubarokahOAuthService $oauthService)
+    {
+        $this->oauthService = $oauthService;
+    }
+
+    /**
+     * Redirect the user to Mubarokah ID's authentication page.
+     */
+    public function redirectToProvider(Request $request)
+    {
+        $scopes = $request->input('scopes', config('services.mubarokah.scopes'));
+        // For simplicity, PKCE is enabled by default in the service
+        $authData = $this->oauthService->getAuthorizationUrl($scopes, true);
+
+        Session::put('mubarokah_oauth_state', $authData['state']);
+        if (isset($authData['code_verifier'])) {
+            Session::put('mubarokah_oauth_code_verifier', $authData['code_verifier']);
+        }
+
+        return redirect()->away($authData['url']);
+    }
+
+    /**
+     * Obtain the user information from Mubarokah ID.
+     */
+    public function handleProviderCallback(Request $request)
+    {
+        // Validate state to prevent CSRF
+        $sessionState = Session::pull('mubarokah_oauth_state');
+        if (empty($sessionState) || $sessionState !== $request->input('state')) {
+            Log::warning('Mubarokah OAuth: Invalid state parameter.', ['request_state' => $request->input('state')]);
+            return redirect('/login')->with('error', 'Authentication failed due to state mismatch. Please try again.');
+        }
+
+        if ($request->has('error')) {
+            Log::error('Mubarokah OAuth Error on callback', [
+                'error' => $request->input('error'),
+                'error_description' => $request->input('error_description')
+            ]);
+            return redirect('/login')->with('error', 'Mubarokah ID authentication failed: ' . $request->input('error_description', $request->input('error')));
+        }
+
+        try {
+            $code = $request->input('code');
+            $codeVerifier = Session::pull('mubarokah_oauth_code_verifier');
+
+            $tokens = $this->oauthService->exchangeCodeForTokens($code, $codeVerifier);
+            $mubarokahUser = $this->oauthService->getUserInfo($tokens['access_token']);
+
+            // Find or create user in your local database
+            $user = User::updateOrCreate(
+                ['email' => $mubarokahUser['email']],
+                [
+                    'name' => $mubarokahUser['name'],
+                    'mubarokah_id' => $mubarokahUser['id'], // Add this column to your users table
+                    'avatar' => $mubarokahUser['profile_picture'] ?? null, // Add this column
+                    'username' => $mubarokahUser['username'] ?? $mubarokahUser['email'], // Add this column
+                    // 'password' => Hash::make(Str::random(16)) // If password is required
+                ]
+            );
+
+            // Store tokens securely (e.g., in a separate table, encrypted)
+            MubarokahToken::updateOrCreate(
+                ['user_id' => $user->id],
+                [
+                    'access_token' => encrypt($tokens['access_token']),
+                    'refresh_token' => encrypt($tokens['refresh_token'] ?? null), // Refresh token might not always be present
+                    'expires_at' => now()->addSeconds($tokens['expires_in']),
+                    'scopes' => $tokens['scope'] ?? implode(' ', config('services.mubarokah.scopes')),
+                ]
+            );
+
+            Auth::login($user, true); // Log the user in (true for "remember me")
+
+            return redirect()->intended('/dashboard')->with('success', 'Successfully logged in with Mubarokah ID!');
+
+        } catch (MubarokahOAuthException $e) {
+            Log::error('Mubarokah OAuth Callback Exception', [
+                'message' => $e->getMessage(),
+                'code' => $e->getCode(),
+                'context' => $e->getContext(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            return redirect('/login')->with('error', 'Authentication failed: ' . $e->getMessage());
+        } catch (\Exception $e) {
+            Log::critical('Mubarokah OAuth Critical Callback Exception', [
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            return redirect('/login')->with('error', 'A critical error occurred during authentication. Please try again later.');
+        }
+    }
+
+    /**
+     * Logout user.
+     */
+    public function logout(Request $request)
+    {
+        $user = Auth::user();
+        if ($user) {
+            // Optional: Revoke Mubarokah ID token if an endpoint exists for it
+            // $this->oauthService->revokeToken($user->mubarokahToken->access_token);
+
+            // Delete local token record
+            MubarokahToken::where('user_id', $user->id)->delete();
+        }
+
+        Auth::logout();
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
+
+        return redirect('/')->with('success', 'You have been logged out.');
+    }
+}
+```
+
+## Token Storage (MubarokahToken Model & Migration)
+
+Create a model and migration to store Mubarokah ID tokens.
+
+**Migration:**
+```bash
+php artisan make:model MubarokahToken -m
+```
+Modify the generated migration file:
+```php
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    public function up(): void
+    {
+        Schema::create('mubarokah_tokens', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('user_id')->constrained()->onDelete('cascade');
+            $table->text('access_token'); // Encrypted
+            $table->text('refresh_token')->nullable(); // Encrypted
+            $table->timestamp('expires_at');
+            $table->string('scopes')->nullable();
+            $table->timestamps();
+
+            $table->unique('user_id');
+        });
+
+        // Add mubarokah_id and avatar to users table
+        Schema::table('users', function (Blueprint $table) {
+            if (!Schema::hasColumn('users', 'mubarokah_id')) {
+                $table->string('mubarokah_id')->nullable()->unique()->after('id');
+            }
+            if (!Schema::hasColumn('users', 'avatar')) {
+                $table->string('avatar')->nullable()->after('email');
+            }
+             if (!Schema::hasColumn('users', 'username')) {
+                $table->string('username')->nullable()->unique()->after('name');
+            }
+        });
+    }
+
+    public function down(): void
+    {
+        Schema::dropIfExists('mubarokah_tokens');
+        Schema::table('users', function (Blueprint $table) {
+            $table->dropColumn(['mubarokah_id', 'avatar', 'username']);
+        });
+    }
+};
+```
+Run `php artisan migrate`.
+
+**`app/Models/MubarokahToken.php`:**
+```php
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Crypt;
+
+class MubarokahToken extends Model
+{
+    use HasFactory;
+
+    protected $fillable = [
+        'user_id',
+        'access_token',
+        'refresh_token',
+        'expires_at',
+        'scopes',
+    ];
+
+    protected $casts = [
+        'expires_at' => 'datetime',
+        'scopes' => 'array', // If storing as JSON, otherwise string
+    ];
+
+    // Accessor to decrypt access token
+    public function getAccessTokenAttribute($value)
+    {
+        try {
+            return Crypt::decryptString($value);
+        } catch (\Illuminate\Contracts\Encryption\DecryptException $e) {
+            return $value; // Or handle error, e.g., return null or log
+        }
+    }
+
+    // Mutator to encrypt access token
+    public function setAccessTokenAttribute($value)
+    {
+        $this->attributes['access_token'] = Crypt::encryptString($value);
+    }
+
+    // Accessor to decrypt refresh token
+    public function getRefreshTokenAttribute($value)
+    {
+        if (is_null($value)) {
+            return null;
+        }
+        try {
+            return Crypt::decryptString($value);
+        } catch (\Illuminate\Contracts\Encryption\DecryptException $e) {
+            return $value;
+        }
+    }
+
+    // Mutator to encrypt refresh token
+    public function setRefreshTokenAttribute($value)
+    {
+        $this->attributes['refresh_token'] = is_null($value) ? null : Crypt::encryptString($value);
+    }
+
+    public function user()
+    {
+        return $this->belongsTo(User::class);
+    }
+
+    public function isExpired(): bool
+    {
+        return $this->expires_at->isPast();
+    }
+}
+```
+<Info>Ensure your `APP_KEY` in `.env` is set correctly as it's used for encryption.</Info>
+
+## Routes
+
+Add routes for initiating login and handling the callback.
+
+**`routes/web.php`:**
+```php
+<?php
+
+use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\Auth\MubarokahController;
+
+// ... other routes
+
+Route::get('/auth/mubarokah/redirect', [MubarokahController::class, 'redirectToProvider'])->name('mubarokah.redirect');
+Route::get('/auth/mubarokah/callback', [MubarokahController::class, 'handleProviderCallback'])->name('mubarokah.callback');
+Route::post('/logout', [MubarokahController::class, 'logout'])->name('logout'); // Example, adjust to your app's logout
+```
+
+## Usage Example
+
+Add a "Login with Mubarokah ID" button to your login page:
+```html
+<a href="{{ route('mubarokah.redirect') }}" class="btn btn-primary">
+  Login with Mubarokah ID
+</a>
+```
+
+This comprehensive setup provides a secure way to integrate Mubarokah ID OAuth into your Laravel application, including token management and user provisioning.

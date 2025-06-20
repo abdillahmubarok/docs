@@ -1,0 +1,398 @@
+---
+title: Advanced Debugging for OAuth & API Integrations
+description: Techniques and tools for advanced debugging of Mubarokah ID OAuth 2.0 flows and API interactions.
+---
+
+# Advanced Debugging for OAuth & API Integrations
+
+While standard logging and monitoring (covered in [Health Monitoring & Observability](../../production/health-monitoring)) are essential, sometimes you need more advanced tools and techniques to debug complex issues with your Mubarokah ID OAuth 2.0 integration.
+
+## Debugging OAuth Flows Locally
+
+-   **Network Proxies/Sniffers:** Tools like Charles Proxy, Fiddler, or Wireshark can intercept HTTP/HTTPS traffic between your application and Mubarokah ID. This allows you to inspect exact request and response headers, bodies, and timings.
+    <Callout type="warning" title="HTTPS Decryption">
+      To inspect HTTPS traffic, you'll need to configure your system/application to trust the proxy's root certificate. Be cautious when doing this and only use trusted proxy tools. Disable it after your debugging session.
+    </Callout>
+-   **Browser Developer Tools:** The "Network" tab is invaluable for debugging front-channel OAuth flows (redirects to `/oauth/authorize` and callbacks to your `redirect_uri`). Inspect redirect chains, query parameters, and cookies.
+-   **NGrok or similar tunneling tools:** If Mubarokah ID needs to send a webhook to your local development machine, or if you're testing callbacks for a `redirect_uri` that must be HTTPS, tools like NGrok can expose your local server to the internet with an HTTPS URL.
+
+## Mubarokah ID Specific Debugging (if available)
+
+-   **Correlation IDs:** If Mubarokah ID's API responses include a correlation ID (e.g., in a header like `X-Request-ID` or `Mubarokah-Trace-Id`), always log this ID. If you need to contact Mubarokah ID support, providing this ID can help them quickly locate the transaction on their end.
+-   **Developer Dashboard:** Check if Mubarokah ID provides a developer dashboard. It might offer logs of recent OAuth requests for your `client_id`, active tokens, or registered redirect URIs and scopes.
+
+## Advanced Debugging Tools & Techniques from
+
+The document proposed some advanced server-side debugging tools. Here are those concepts adapted:
+
+### Conceptual CLI Debugging Command
+
+A command-line tool (e.g., a Laravel Artisan command or a script) can be built to check the status and recent activity related to a specific `client_id` or `user_id` within your system's understanding of the OAuth integration.
+
+**Example Features (Conceptual - from `oauth:debug` in):**
+-   Check client configuration in your database/environment.
+-   List active tokens for a user/client from your token store.
+-   Show recent scope approvals for a client (if you track this).
+-   Tail relevant error logs filtered by `client_id` or `user_id`.
+-   Simulate parts of the OAuth flow using configured credentials (e.g., test client credential grant if applicable).
+
+```php
+<?php
+
+// namespace App\Console\Commands;
+
+// use Illuminate\Console\Command;
+// use App\Models\MubarokahToken; // Asumsi model Eloquent
+
+class DebugOAuthFlow extends Command
+{
+    /**
+     * The name and signature of the console command.
+     *
+     * @var string
+     */
+    protected $signature = 'mubarokah:debug {client_id} {--user_id=} {--trace}';
+
+    /**
+     * The console command description.
+     *
+     * @var string
+     */
+    protected $description = 'Debug Mubarokah ID OAuth flow for a specific client or user';
+
+    /**
+     * Execute the console command.
+     *
+     * @return int
+     */
+    public function handle()
+    {
+        $clientId = $this->argument('client_id');
+        $userId = $this->option('user_id');
+        $this->info("🔍 Debugging for Mubarokah ID Client: {$clientId}");
+
+        // 1. Check Client Configuration (from your app's perspective)
+        $this->line("\n📋 Client Configuration:");
+        $clientConfig = config('services.mubarokah'); // Example
+        if ($clientConfig['client_id'] == $clientId) {
+            $this->info("Loaded Client ID: " . $clientConfig['client_id']);
+            $this->info("Redirect URI: " . $clientConfig['redirect']);
+            $this->info("Base URL: " . $clientConfig['base_url']);
+        } else {
+            $this->error("Client ID mismatch or not found in local config.");
+        }
+
+        // 2. Check Recent Tokens from your Token Store (e.g., MubarokahToken model)
+        $this->line("\n🎫 Recent Token Activity (from local store):");
+        // Logika untuk mengambil token, contoh:
+        // $recentTokens = MubarokahToken::where('client_id', $clientId)
+        //     ->orderBy('created_at', 'desc')
+        //     ->limit(5)
+        //     ->get();
+        // foreach ($recentTokens as $token) {
+        //     $status = $token->isExpired() ? '⏰ Expired' : '✅ Active';
+        //     $this->line("Token for User {$token->user_id}: {$status} - Created: {$token->created_at} - Expires: {$token->expires_at}");
+        //     $this->line("   Scopes: " . implode(', ', $token->scopes ?? []));
+        // }
+
+        // 3. Check Error Logs
+        $this->line("\n📝 Recent Error Logs (filtered):");
+        $this->comment('// Implement log searching logic here...');
+        $this->comment('// Example: grep for client_id or user_id in your application logs.');
+
+        if ($this->option('trace')) {
+            $this->line("\n🔬 Simulating OAuth Flow Trace (Conceptual):");
+            // This would involve making mock calls or describing expected steps.
+            try {
+                // $testClient = new \GuzzleHttp\Client();
+                // $response = $testClient->post(config('services.mubarokah.base_url') . '/oauth/token', [
+                //     'form_params' => [
+                //         'grant_type' => 'client_credentials',
+                //         'client_id' => $clientId,
+                //         'client_secret' => config('services.mubarokah.client_secret') // Careful with secrets
+                //     ]
+                // ]);
+                // $this->info("Client Credentials Grant Test: Success " . $response->getStatusCode());
+            } catch (\Exception $e) {
+                // $this->error("Client Credentials Grant Test: Failed - " . $e->getMessage());
+            }
+        }
+    }
+}
+```
+<Callout type="note">
+Building such a CLI tool requires careful consideration of how to access necessary data (like configurations and token stores) and how to securely handle any credentials if used for test API calls.
+</Callout>
+
+### Distributed Tracing / OAuth Flow Tracer
+
+For complex microservice architectures or to get a clear end-to-end view of an OAuth flow, distributed tracing can be invaluable. If Mubarokah ID supports it by propagating trace headers (e.g., W3C Trace Context), your application should participate in the trace.
+
+Even without full distributed tracing, you can implement a logical "OAuth Flow Tracer" within your application:
+
+-   **Generate a Unique Trace ID:** When an OAuth flow begins (e.g., user clicks "Login with Mubarokah ID"), generate a unique ID.
+-   **Log Key Steps with Trace ID:** Log every significant step of the OAuth flow (authorization request, callback received, state validation, token request sent, token response received, user info request, etc.) with this trace ID.
+-   **Centralized Logging:** Ensure these logs go to a centralized logging system where you can easily search and filter by the trace ID.
+
+**Conceptual OAuth Flow Tracer:**
+```typescript
+import { v4 as uuidv4 } from 'uuid'; // Example for generating unique IDs
+
+class OAuthFlowTracer {
+    private activeTraces: Map<string, { startTime: number, steps: any[], errors: any[], context: any }> = new Map();
+
+    public startTrace(initialContext: any = {}): string {
+        const traceId = uuidv4();
+        this.activeTraces.set(traceId, {
+            startTime: Date.now(),
+            steps: [{ step: 'Trace Initiated', timestamp: Date.now(), data: initialContext }],
+            errors: [],
+            context: initialContext
+        });
+        console.log(`OAuth Trace Started: ${traceId}`, initialContext); // Replace with proper logging
+        return traceId;
+    }
+
+    public addStep(traceId: string, stepName: string, data: any = {}): void {
+        const trace = this.activeTraces.get(traceId);
+        if (trace) {
+            const stepData = { step: stepName, timestamp: Date.now(), data, memory: process.memoryUsage().rss };
+            trace.steps.push(stepData);
+            console.log(`OAuth Trace [${traceId}] Step: ${stepName}`, data); // Replace with proper logging
+        }
+    }
+
+    public addError(traceId: string, error: any, context: any = {}): void {
+        const trace = this.activeTraces.get(traceId);
+        if (trace) {
+            const errorData = { error: error.message || error, timestamp: Date.now(), context, stack: error.stack };
+            trace.errors.push(errorData);
+            console.error(`OAuth Trace [${traceId}] Error: ${error.message || error}`, context); // Replace with proper logging
+        }
+    }
+
+    public endTrace(traceId: string): any | null {
+        const trace = this.activeTraces.get(traceId);
+        if (trace) {
+            trace.steps.push({ step: 'Trace Ended', timestamp: Date.now() });
+            const totalDuration = Date.now() - trace.startTime;
+            console.log(`OAuth Trace Ended: ${traceId}, Duration: ${totalDuration}ms`, {
+                duration: totalDuration,
+                stepCount: trace.steps.length,
+                errorCount: trace.errors.length
+            }); // Replace with proper logging
+
+            this.activeTraces.delete(traceId);
+            return { ...trace, totalDuration };
+        }
+        return null;
+    }
+}
+
+// Usage Example:
+// const tracer = new OAuthFlowTracer();
+// const traceId = tracer.startTrace({ clientId: 'xyz-client-123' });
+// tracer.addStep(traceId, 'Redirecting to authorize endpoint');
+// // ... later in your callback handler ...
+// tracer.addStep(traceId, 'Callback received', { code: 'some-auth-code', state: 'state-value' });
+// // if (error) tracer.addError(traceId, error);
+// tracer.endTrace(traceId);
+```
+
+<Callout type="tip">
+When logging for debugging, be extremely careful **not to log sensitive data** like `client_secret`, actual `access_token` or `refresh_token` values, or raw user PII unless absolutely necessary for a specific, secure debugging context and with appropriate data protection measures in place.
+</Callout>
+
+By combining these advanced debugging tools and techniques with solid logging and monitoring, you can more effectively diagnose and resolve complex issues in your Mubarokah ID integration.
+
+---
+title: Advanced Debugging for OAuth & API Integrations
+description: Techniques and tools for advanced debugging of Mubarokah ID OAuth 2.0 flows and API interactions.
+---
+
+# Advanced Debugging for OAuth & API Integrations
+
+While standard logging and monitoring (covered in [Health Monitoring & Observability](../../production/health-monitoring)) are essential, sometimes you need more advanced tools and techniques to debug complex issues with your Mubarokah ID OAuth 2.0 integration.
+
+## Debugging OAuth Flows Locally
+
+-   **Network Proxies/Sniffers:** Tools like Charles Proxy, Fiddler, or Wireshark can intercept HTTP/HTTPS traffic between your application and Mubarokah ID. This allows you to inspect exact request and response headers, bodies, and timings.
+    <Callout type="warning" title="HTTPS Decryption">
+      To inspect HTTPS traffic, you'll need to configure your system/application to trust the proxy's root certificate. Be cautious when doing this and only use trusted proxy tools. Disable it after your debugging session.
+    </Callout>
+-   **Browser Developer Tools:** The "Network" tab is invaluable for debugging front-channel OAuth flows (redirects to `/oauth/authorize` and callbacks to your `redirect_uri`). Inspect redirect chains, query parameters, and cookies.
+-   **NGrok or similar tunneling tools:** If Mubarokah ID needs to send a webhook to your local development machine, or if you're testing callbacks for a `redirect_uri` that must be HTTPS, tools like NGrok can expose your local server to the internet with an HTTPS URL.
+
+## Mubarokah ID Specific Debugging (if available)
+
+-   **Correlation IDs:** If Mubarokah ID's API responses include a correlation ID (e.g., in a header like `X-Request-ID` or `Mubarokah-Trace-Id`), always log this ID. If you need to contact Mubarokah ID support, providing this ID can help them quickly locate the transaction on their end.
+-   **Developer Dashboard:** Check if Mubarokah ID provides a developer dashboard. It might offer logs of recent OAuth requests for your `client_id`, active tokens, or registered redirect URIs and scopes.
+
+## Advanced Debugging Tools & Techniques from `hasil.mdx`
+
+The `hasil.mdx` document proposed some advanced server-side debugging tools. Here are those concepts adapted:
+
+### Conceptual CLI Debugging Command
+
+A command-line tool (e.g., a Laravel Artisan command or a script) can be built to check the status and recent activity related to a specific `client_id` or `user_id` within your system's understanding of the OAuth integration.
+
+**Example Features (Conceptual - from `oauth:debug` in `hasil.mdx`):**
+-   Check client configuration in your database/environment.
+-   List active tokens for a user/client from your token store.
+-   Show recent scope approvals for a client (if you track this).
+-   Tail relevant error logs filtered by `client_id` or `user_id`.
+-   Simulate parts of the OAuth flow using configured credentials (e.g., test client credential grant if applicable).
+
+```php
+// Conceptual PHP/Laravel Artisan Command Snippet (Illustrative)
+// From: app/Console/Commands/DebugOAuthFlow.php in hasil.mdx
+
+// protected $signature = 'mubarokah:debug {client_id} {--user_id=} {--trace}';
+// protected $description = 'Debug Mubarokah ID OAuth flow for a specific client or user';
+
+// public function handle()
+// {
+//     $clientId = $this->argument('client_id');
+//     $userId = $this->option('user_id');
+//     $this->info("🔍 Debugging for Mubarokah ID Client: {$clientId}");
+
+//     // 1. Check Client Configuration (from your app's perspective)
+//     $this->line("
+📋 Client Configuration:");
+//     // $clientConfig = config('services.mubarokah'); // Example
+//     // if ($clientConfig['client_id'] == $clientId) {
+//     //    $this->info("Loaded Client ID: " . $clientConfig['client_id']);
+//     //    $this->info("Redirect URI: " . $clientConfig['redirect']);
+//     //    $this->info("Base URL: " . $clientConfig['base_url']);
+//     // } else {
+//     //    $this->error("Client ID mismatch or not found in local config.");
+//     // }
+
+
+//     // 2. Check Recent Tokens from your Token Store (e.g., MubarokahToken model)
+//     $this->line("
+🎫 Recent Token Activity (from local store):");
+//     // $recentTokens = MubarokahToken::whereHas('user', function($q) use ($clientId){
+//     //       // This join might be tricky depending on your models, or search by client_id if stored on token
+//     //   })->orderBy('created_at', 'desc')->limit(5)->get();
+//     // foreach ($recentTokens as $token) {
+//     //     $status = $token->isExpired() ? '⏰ Expired' : '✅ Active';
+//     //     $this->line("Token for User {$token->user_id}: {$status} - Created: {$token->created_at} - Expires: {$token->expires_at}");
+//     //     $this->line("   Scopes: " . implode(', ', $token->scopes ?? []));
+//     // }
+
+
+//     // 3. Check Error Logs (filtered)
+//     $this->line("
+📝 Recent Error Logs (filtered for client/user if possible):");
+//     // Implement log searching logic here...
+//     // Example: grep for client_id or user_id in your application logs.
+
+
+//     if ($this->option('trace')) {
+//         $this->line("
+🔬 Simulating OAuth Flow Trace (Conceptual):");
+//         // This would involve making mock calls or describing expected steps.
+//         // For instance, trying a client credentials grant if applicable,
+//         // or attempting to connect to Mubarokah ID endpoints.
+//         // try {
+//         //    $testClient = new \GuzzleHttp\Client();
+//         //    $response = $testClient->post(config('services.mubarokah.base_url') . '/oauth/token', [
+//         //        'form_params' => [
+//         //            'grant_type' => 'client_credentials',
+//         //            'client_id' => $clientId,
+//         //            'client_secret' => config('services.mubarokah.client_secret') // Careful with secrets
+//         //        ]
+//         //    ]);
+//         //    $this->info("Client Credentials Grant Test: Success " . $response->getStatusCode());
+//         // } catch (\Exception $e) {
+//         //    $this->error("Client Credentials Grant Test: Failed - " . $e->getMessage());
+//         // }
+//     }
+// }
+```
+<Callout type="note">
+Building such a CLI tool requires careful consideration of how to access necessary data (like configurations and token stores) and how to securely handle any credentials if used for test API calls.
+</Callout>
+
+### Distributed Tracing / OAuth Flow Tracer
+
+For complex microservice architectures or to get a clear end-to-end view of an OAuth flow, distributed tracing can be invaluable. If Mubarokah ID supports it by propagating trace headers (e.g., W3C Trace Context), your application should participate in the trace.
+
+Even without full distributed tracing, you can implement a logical "OAuth Flow Tracer" within your application:
+
+-   **Generate a Unique Trace ID:** When an OAuth flow begins (e.g., user clicks "Login with Mubarokah ID"), generate a unique ID.
+-   **Log Key Steps with Trace ID:** Log every significant step of the OAuth flow (authorization request, callback received, state validation, token request sent, token response received, user info request, etc.) with this trace ID.
+-   **Centralized Logging:** Ensure these logs go to a centralized logging system where you can easily search and filter by the trace ID.
+
+**Conceptual OAuth Flow Tracer (from `hasil.mdx`):**
+```typescript
+// // Conceptual TypeScript class for tracing an OAuth flow
+// import { v4 as uuidv4 } from 'uuid'; // Example for generating unique IDs
+
+// class OAuthFlowTracer {
+//   private activeTraces: Map<string, { startTime: number, steps: any[], errors: any[], context: any }> = new Map();
+
+//   public startTrace(initialContext: any = {}): string {
+//     const traceId = uuidv4();
+//     this.activeTraces.set(traceId, {
+//       startTime: Date.now(),
+//       steps: [{ step: 'Trace Initiated', timestamp: Date.now(), data: initialContext }],
+//       errors: [],
+//       context: initialContext
+//     });
+//     console.log(`OAuth Trace Started: \${traceId}`, initialContext); // Replace with proper logging
+//     return traceId;
+//   }
+
+//   public addStep(traceId: string, stepName: string, data: any = {}): void {
+//     const trace = this.activeTraces.get(traceId);
+//     if (trace) {
+//       const stepData = { step: stepName, timestamp: Date.now(), data, memory: process.memoryUsage().rss };
+//       trace.steps.push(stepData);
+//       console.log(`OAuth Trace [${traceId}] Step: \${stepName}`, data); // Replace with proper logging
+//     }
+//   }
+
+//   public addError(traceId: string, error: any, context: any = {}): void {
+//     const trace = this.activeTraces.get(traceId);
+//     if (trace) {
+//       const errorData = { error: error.message || error, timestamp: Date.now(), context, stack: error.stack };
+//       trace.errors.push(errorData);
+//       console.error(`OAuth Trace [${traceId}] Error: \${error.message || error}`, context); // Replace with proper logging
+//     }
+//   }
+
+//   public endTrace(traceId: string): any | null {
+//     const trace = this.activeTraces.get(traceId);
+//     if (trace) {
+//       trace.steps.push({ step: 'Trace Ended', timestamp: Date.now() });
+//       const totalDuration = Date.now() - trace.startTime;
+//       console.log(`OAuth Trace Ended: \${traceId}, Duration: \${totalDuration}ms`, {
+//         duration: totalDuration,
+//         stepCount: trace.steps.length,
+//         errorCount: trace.errors.length
+//       }); // Replace with proper logging
+
+//       this.activeTraces.delete(traceId);
+//       return { ...trace, totalDuration };
+//     }
+//     return null;
+//   }
+// }
+
+// // Usage:
+// // const tracer = new OAuthFlowTracer();
+// // const traceId = tracer.startTrace({ clientId: 'xyz' });
+// // tracer.addStep(traceId, 'Redirecting to authorize');
+// // ... later in callback ...
+// // tracer.addStep(traceId, 'Callback received', { code: 'xxx', state: 'yyy' });
+// // if (error) tracer.addError(traceId, error);
+// // tracer.endTrace(traceId);
+```
+
+<Callout type="tip">
+When logging for debugging, be extremely careful **not to log sensitive data** like `client_secret`, actual `access_token` or `refresh_token` values, or raw user PII unless absolutely necessary for a specific, secure debugging context and with appropriate data protection measures in place.
+</Callout>
+
+By combining these advanced debugging tools and techniques with solid logging and monitoring, you can more effectively diagnose and resolve complex issues in your Mubarokah ID integration.

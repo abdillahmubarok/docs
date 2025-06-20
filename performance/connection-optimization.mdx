@@ -1,0 +1,325 @@
+---
+title: Connection Optimization for API Calls
+description: Techniques for optimizing HTTP connections to Mubarokah ID's API servers for better performance and reliability.
+---
+
+# Connection Optimization for API Calls
+
+Optimizing the way your application connects to Mubarokah ID's API servers can lead to significant performance improvements, reduced latency, and increased reliability. This involves practices like connection pooling, keep-alive, and handling transient network issues gracefully.
+
+## HTTP Connection Pooling
+
+Establishing a new HTTP(S) connection for every API request (e.g., to `/oauth/token` or `/api/user`) incurs overhead due to the TCP handshake and TLS negotiation. Connection pooling allows your application to reuse existing connections for multiple requests to the same host.
+
+-   **How it Works:** Instead of closing a connection after a request-response cycle, the connection is kept open and returned to a pool. Subsequent requests to the same host can reuse a connection from this pool, bypassing the handshake overhead.
+-   **Benefits:**
+    -   Reduced latency for API calls.
+    -   Lower CPU usage on both your server and Mubarokah ID's servers.
+-   **Implementation:** Most modern HTTP client libraries in various languages support connection pooling by default or through configuration.
+    -   **Node.js:** The built-in `http.Agent` and `https.Agent` use connection pooling. Libraries like `axios` use these agents. You can configure `maxSockets` on the agent.
+    -   **Python:** Libraries like `requests` (with `Session` objects) and `httpx` manage connection pools automatically. You can often configure pool size and other parameters.
+    -   **Java:** Apache HttpClient, OkHttp, and Java's built-in `HttpClient` (Java 11+) all support robust connection pooling.
+    -   **PHP:** Guzzle (when using cURL handlers) can leverage cURL's connection caching features. Ensure your PHP environment and cURL are configured to allow persistent connections if appropriate for your execution model (e.g., long-running workers vs. short PHP-FPM requests).
+
+**Conceptual Configuration (Node.js - Global Agent):**
+```javascript
+import http from 'http';
+import https from 'https';
+
+// Configure global HTTP/HTTPS agents for connection pooling
+const httpAgent = new http.Agent({
+  keepAlive: true,
+  maxSockets: 100, // Max sockets per host
+  maxFreeSockets: 10,
+  timeout: 60000, // Active socket timeout
+  freeSocketTimeout: 30000 // Free socket timeout before closing
+});
+
+const httpsAgent = new https.Agent({
+  keepAlive: true,
+  maxSockets: 100,
+  maxFreeSockets: 10,
+  timeout: 60000,
+  freeSocketTimeout: 30000
+});
+
+// If using axios, you can pass these agents during instance creation
+import axios from 'axios';
+const apiClient = axios.create({
+  baseURL: 'https://mubarokah.id',
+  httpAgent: httpAgent, // For http requests
+  httpsAgent: httpsAgent // For https requests
+});
+```
+<Callout type="note">
+Ensure your HTTP client library is up-to-date to benefit from the latest improvements in connection handling and pooling.
+</Callout>
+
+## HTTP Keep-Alive
+
+Closely related to connection pooling, HTTP Keep-Alive (also known as persistent connections) allows the same TCP connection to be used for multiple HTTP requests and responses, rather than opening a new one for every single request.
+
+-   **How it's Enabled:** Typically controlled by the `Connection: Keep-Alive` header (for HTTP/1.0) or by default in HTTP/1.1 and HTTP/2.
+-   **Benefits:** Similar to pooling – reduces latency and overhead.
+-   **Client Responsibility:** Your HTTP client needs to support and enable keep-alive. Most modern clients do this by default for HTTP/1.1.
+
+## Request Deduplication & Short-Circuiting
+
+-   **Problem:** In some application flows, your code might inadvertently trigger multiple identical API requests in rapid succession (e.g., fetching user profile multiple times during a single page load).
+-   **Solution (Client-Side or Server-Side Logic):**
+    -   Implement a mechanism to detect if an identical request is already in flight.
+    -   If so, instead of issuing a new network call, subscribe to the result of the ongoing request.
+    -   This can be managed with promises or similar async patterns.
+
+**Conceptual Request Deduplication (TypeScript):**
+```typescript
+class OptimizedOAuthClient {
+  private ongoingRequests: Map<string, Promise<any>> = new Map();
+
+  private generateRequestKey(method: string, url: string, params?: any): string {
+    return `${method}:${url}:${JSON.stringify(params || {})}`;
+  }
+
+  async makeRequest(method: string, url: string, params?: any, data?: any): Promise<any> {
+    const requestKey = this.generateRequestKey(method, url, params);
+
+    if (this.ongoingRequests.has(requestKey)) {
+      console.log(`Deduplicating request: ${requestKey}`);
+      return this.ongoingRequests.get(requestKey);
+    }
+
+    const requestPromise = this.executeActualRequest(method, url, params, data)
+      .finally(() => {
+        this.ongoingRequests.delete(requestKey); // Clean up after request completes
+      });
+
+    this.ongoingRequests.set(requestKey, requestPromise);
+    return requestPromise;
+  }
+
+  private async executeActualRequest(method: string, url: string, params?: any, data?: any): Promise<any> {
+    // Actual HTTP client call (e.g., using axios or fetch)
+    const response = await this.httpClient.request({ method, url, params, data });
+    return response.data;
+    console.log(`Executing actual request: ${method} ${url}`);
+    return Promise.resolve({ mockData: "data for " + url }); // Placeholder
+  }
+}
+
+const client = new OptimizedOAuthClient();
+client.makeRequest('GET', 'https://mubarokah.id/api/user', { id: 123 });
+client.makeRequest('GET', 'https://mubarokah.id/api/user', { id: 123 }); // This one would be deduplicated
+```
+
+## Timeouts and Retries
+
+Network requests can sometimes be slow or fail due to transient issues.
+
+-   **Connection Timeouts:** Set a reasonable timeout for establishing a connection to Mubarokah ID's servers.
+-   **Request/Response Timeouts:** Set a timeout for the entire request-response cycle.
+-   **Retry Mechanisms:**
+    -   Implement retries for idempotent requests (like GET requests for user info) that fail due to transient network errors or specific HTTP status codes (e.g., `502 Bad Gateway`, `503 Service Unavailable`, `504 Gateway Timeout`).
+    -   Use an **exponential backoff** strategy for retries (e.g., wait 1s, then 2s, then 4s) to avoid overwhelming the server.
+    -   Limit the number of retries.
+    -   **Do not retry non-idempotent requests (like POST to `/oauth/token` with an authorization code) automatically unless you are certain it's safe and the failure was due to a network blip before the request was processed.** Replaying a token exchange with the same auth code might lead to errors if the code was already consumed.
+
+**Conceptual Retry Logic (using a hypothetical HTTP client):**
+```javascript
+async function exchangeCodeForTokensWithRetry(code, redirectUri, attempt = 1) {
+  const MAX_RETRIES = 3;
+  const INITIAL_BACKOFF_MS = 1000;
+
+  try {
+    // const response = await httpClient.post('https://mubarokah.id/oauth/token', { ... });
+    // return response.data;
+    throw new Error("Simulated network error"); // For example
+  } catch (error) {
+    // Check if error is retryable (e.g., network error, specific 5xx status codes)
+    const isRetryable = error.isNetworkError || (error.response && error.response.status >= 500);
+
+    if (isRetryable && attempt <= MAX_RETRIES) {
+      const backoffTime = INITIAL_BACKOFF_MS * Math.pow(2, attempt - 1);
+      console.log(`Attempt \${attempt} failed. Retrying in \${backoffTime}ms...`);
+      await new Promise(resolve => setTimeout(resolve, backoffTime));
+      return exchangeCodeForTokensWithRetry(code, redirectUri, attempt + 1);
+    } else {
+      console.error(`Request failed after \${attempt} attempts or error not retryable.`);
+      throw error; // Re-throw the last error
+    }
+  }
+}
+```
+<Callout type="warning" title="Idempotency">
+  Be very careful when retrying requests that modify state (POST, PUT, DELETE). Ensure the operation is idempotent or that your retry logic correctly handles potential duplicate operations. For OAuth token exchange, if you get a network error before receiving a response, it's hard to know if the code was consumed.
+</Callout>
+
+## Other Considerations
+
+-   **HTTP/2 or HTTP/3:** If Mubarokah ID's servers support HTTP/2 or HTTP/3, and your client library does as well, these newer protocols offer multiplexing and other features that can improve connection efficiency over HTTP/1.1.
+-   **DNS Caching:** Ensure your server or application environment correctly caches DNS lookups to avoid repeated DNS resolution overhead for `mubarokah.id`. This is usually handled by the OS or your runtime environment.
+-   **Payload Size:** While not strictly connection optimization, sending smaller request payloads (e.g., only necessary JSON fields) and preferring concise response formats can reduce transfer time. Mubarokah ID APIs should be designed with this in mind.
+
+By implementing these connection optimization techniques, your application can interact with Mubarokah ID APIs more efficiently, leading to a better experience for your users.
+
+---
+title: Connection Optimization for API Calls
+description: Techniques for optimizing HTTP connections to Mubarokah ID's API servers for better performance and reliability.
+---
+
+# Connection Optimization for API Calls
+
+Optimizing the way your application connects to Mubarokah ID's API servers can lead to significant performance improvements, reduced latency, and increased reliability. This involves practices like connection pooling, keep-alive, and handling transient network issues gracefully.
+
+## HTTP Connection Pooling
+
+Establishing a new HTTP(S) connection for every API request (e.g., to `/oauth/token` or `/api/user`) incurs overhead due to the TCP handshake and TLS negotiation. Connection pooling allows your application to reuse existing connections for multiple requests to the same host.
+
+-   **How it Works:** Instead of closing a connection after a request-response cycle, the connection is kept open and returned to a pool. Subsequent requests to the same host can reuse a connection from this pool, bypassing the handshake overhead.
+-   **Benefits:**
+    -   Reduced latency for API calls.
+    -   Lower CPU usage on both your server and Mubarokah ID's servers.
+-   **Implementation:** Most modern HTTP client libraries in various languages support connection pooling by default or through configuration.
+    -   **Node.js:** The built-in `http.Agent` and `https.Agent` use connection pooling. Libraries like `axios` use these agents. You can configure `maxSockets` on the agent.
+    -   **Python:** Libraries like `requests` (with `Session` objects) and `httpx` manage connection pools automatically. You can often configure pool size and other parameters.
+    -   **Java:** Apache HttpClient, OkHttp, and Java's built-in `HttpClient` (Java 11+) all support robust connection pooling.
+    -   **PHP:** Guzzle (when using cURL handlers) can leverage cURL's connection caching features. Ensure your PHP environment and cURL are configured to allow persistent connections if appropriate for your execution model (e.g., long-running workers vs. short PHP-FPM requests).
+
+**Conceptual Configuration (Node.js - Global Agent):**
+```javascript
+// import http from 'http';
+// import https from 'https';
+
+// // Configure global HTTP/HTTPS agents for connection pooling
+// const httpAgent = new http.Agent({
+//   keepAlive: true,
+//   maxSockets: 100, // Max sockets per host
+//   maxFreeSockets: 10,
+//   timeout: 60000, // Active socket timeout
+//   freeSocketTimeout: 30000 // Free socket timeout before closing
+// });
+
+// const httpsAgent = new https.Agent({
+//   keepAlive: true,
+//   maxSockets: 100,
+//   maxFreeSockets: 10,
+//   timeout: 60000,
+//   freeSocketTimeout: 30000
+// });
+
+// // If using axios, you can pass these agents during instance creation
+// // import axios from 'axios';
+// // const apiClient = axios.create({
+// //   baseURL: 'https://mubarokah.id',
+// //   httpAgent: httpAgent, // For http requests
+// //   httpsAgent: httpsAgent // For https requests
+// // });
+```
+<Callout type="note">
+Ensure your HTTP client library is up-to-date to benefit from the latest improvements in connection handling and pooling.
+</Callout>
+
+## HTTP Keep-Alive
+
+Closely related to connection pooling, HTTP Keep-Alive (also known as persistent connections) allows the same TCP connection to be used for multiple HTTP requests and responses, rather than opening a new one for every single request.
+
+-   **How it's Enabled:** Typically controlled by the `Connection: Keep-Alive` header (for HTTP/1.0) or by default in HTTP/1.1 and HTTP/2.
+-   **Benefits:** Similar to pooling – reduces latency and overhead.
+-   **Client Responsibility:** Your HTTP client needs to support and enable keep-alive. Most modern clients do this by default for HTTP/1.1.
+
+## Request Deduplication & Short-Circuiting
+
+-   **Problem:** In some application flows, your code might inadvertently trigger multiple identical API requests in rapid succession (e.g., fetching user profile multiple times during a single page load).
+-   **Solution (Client-Side or Server-Side Logic):**
+    -   Implement a mechanism to detect if an identical request is already in flight.
+    -   If so, instead of issuing a new network call, subscribe to the result of the ongoing request.
+    -   This can be managed with promises or similar async patterns.
+
+**Conceptual Request Deduplication (TypeScript):**
+```typescript
+// class OptimizedOAuthClient {
+//   private ongoingRequests: Map<string, Promise<any>> = new Map();
+
+//   private generateRequestKey(method: string, url: string, params?: any): string {
+//     return `${method}:${url}:${JSON.stringify(params || {})}`;
+//   }
+
+//   async makeRequest(method: string, url: string, params?: any, data?: any): Promise<any> {
+//     const requestKey = this.generateRequestKey(method, url, params);
+
+//     if (this.ongoingRequests.has(requestKey)) {
+//       console.log(`Deduplicating request: ${requestKey}`);
+//       return this.ongoingRequests.get(requestKey);
+//     }
+
+//     const requestPromise = this.executeActualRequest(method, url, params, data)
+//       .finally(() => {
+//         this.ongoingRequests.delete(requestKey); // Clean up after request completes
+//       });
+
+//     this.ongoingRequests.set(requestKey, requestPromise);
+//     return requestPromise;
+//   }
+
+//   private async executeActualRequest(method: string, url: string, params?: any, data?: any): Promise<any> {
+//     // Actual HTTP client call (e.g., using axios or fetch)
+//     // const response = await this.httpClient.request({ method, url, params, data });
+//     // return response.data;
+//     console.log(`Executing actual request: ${method} ${url}`);
+//     return Promise.resolve({ mockData: "data for " + url }); // Placeholder
+//   }
+// }
+
+// // const client = new OptimizedOAuthClient();
+// // client.makeRequest('GET', 'https://mubarokah.id/api/user', { id: 123 });
+// // client.makeRequest('GET', 'https://mubarokah.id/api/user', { id: 123 }); // This one would be deduplicated
+```
+
+## Timeouts and Retries
+
+Network requests can sometimes be slow or fail due to transient issues.
+
+-   **Connection Timeouts:** Set a reasonable timeout for establishing a connection to Mubarokah ID's servers.
+-   **Request/Response Timeouts:** Set a timeout for the entire request-response cycle.
+-   **Retry Mechanisms:**
+    -   Implement retries for idempotent requests (like GET requests for user info) that fail due to transient network errors or specific HTTP status codes (e.g., `502 Bad Gateway`, `503 Service Unavailable`, `504 Gateway Timeout`).
+    -   Use an **exponential backoff** strategy for retries (e.g., wait 1s, then 2s, then 4s) to avoid overwhelming the server.
+    -   Limit the number of retries.
+    -   **Do not retry non-idempotent requests (like POST to `/oauth/token` with an authorization code) automatically unless you are certain it's safe and the failure was due to a network blip before the request was processed.** Replaying a token exchange with the same auth code might lead to errors if the code was already consumed.
+
+**Conceptual Retry Logic (using a hypothetical HTTP client):**
+```javascript
+// async function exchangeCodeForTokensWithRetry(code, redirectUri, attempt = 1) {
+//   const MAX_RETRIES = 3;
+//   const INITIAL_BACKOFF_MS = 1000;
+
+//   try {
+//     // const response = await httpClient.post('https://mubarokah.id/oauth/token', { ... });
+//     // return response.data;
+//     throw new Error("Simulated network error"); // For example
+//   } catch (error) {
+//     // Check if error is retryable (e.g., network error, specific 5xx status codes)
+//     const isRetryable = error.isNetworkError || (error.response && error.response.status >= 500);
+
+//     if (isRetryable && attempt <= MAX_RETRIES) {
+//       const backoffTime = INITIAL_BACKOFF_MS * Math.pow(2, attempt - 1);
+//       console.log(`Attempt \${attempt} failed. Retrying in \${backoffTime}ms...`);
+//       await new Promise(resolve => setTimeout(resolve, backoffTime));
+//       return exchangeCodeForTokensWithRetry(code, redirectUri, attempt + 1);
+//     } else {
+//       console.error(`Request failed after \${attempt} attempts or error not retryable.`);
+//       throw error; // Re-throw the last error
+//     }
+//   }
+// }
+```
+<Callout type="warning" title="Idempotency">
+  Be very careful when retrying requests that modify state (POST, PUT, DELETE). Ensure the operation is idempotent or that your retry logic correctly handles potential duplicate operations. For OAuth token exchange, if you get a network error before receiving a response, it's hard to know if the code was consumed.
+</Callout>
+
+## Other Considerations
+
+-   **HTTP/2 or HTTP/3:** If Mubarokah ID's servers support HTTP/2 or HTTP/3, and your client library does as well, these newer protocols offer multiplexing and other features that can improve connection efficiency over HTTP/1.1.
+-   **DNS Caching:** Ensure your server or application environment correctly caches DNS lookups to avoid repeated DNS resolution overhead for `mubarokah.id`. This is usually handled by the OS or your runtime environment.
+-   **Payload Size:** While not strictly connection optimization, sending smaller request payloads (e.g., only necessary JSON fields) and preferring concise response formats can reduce transfer time. Mubarokah ID APIs should be designed with this in mind.
+
+By implementing these connection optimization techniques, your application can interact with Mubarokah ID APIs more efficiently, leading to a better experience for your users.

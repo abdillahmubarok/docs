@@ -1,0 +1,261 @@
+---
+title: Caching Strategies for OAuth Performance
+description: Implementing effective caching strategies to optimize the performance of Mubarokah ID OAuth 2.0 integrations.
+---
+
+# Caching Strategies for OAuth Performance
+
+Effective caching can significantly improve the performance and reduce the latency of your Mubarokah ID OAuth 2.0 integration. By caching frequently accessed data that doesn't change often, you can reduce the number of calls to Mubarokah ID's servers and speed up responses to your users.
+
+## What to Cache?
+
+Consider caching the following types of data:
+
+-   **User Information (`/api/user`, `/api/user/details`):** User profile data often doesn't change frequently. Caching this on your server can prevent repeated API calls for the same user within a short timeframe.
+-   **Client Configuration Details (if fetched dynamically):** If your application dynamically fetches OAuth client details (though typically these are static configuration).
+-   **Mubarokah ID's Public Keys / JWKS URI Content (if applicable):** If Mubarokah ID uses JWTs for access tokens and you are validating them locally (which requires fetching the public signing keys), the JWKS URI content can be cached.
+-   **Token Validation Results (Introspection):** If you use a token introspection endpoint, the validation status of an access token can be cached for a short period to avoid repeated introspection calls for the same token.
+
+<Callout type="warning" title="Do Not Cache Sensitive Data Insecurely">
+  Be extremely cautious about caching sensitive data, especially in client-side (browser) caches. Server-side caching offers more control over security. Never cache `client_secret` or unencrypted refresh tokens in a way that could be exposed.
+</Callout>
+
+## Caching Levels and Techniques
+
+### 1. Client-Side Caching (Browser)
+
+-   **Purpose:** Reduce redundant requests from the same user during their session.
+-   **Techniques:**
+    -   **HTTP Caching Headers:** Leverage browser caching for static assets related to your UI (images, CSS, JS). While not directly for OAuth data, it improves overall page load. Mubarokah ID's profile pictures, if served with appropriate cache headers, might be cached by the browser.
+    -   **In-Memory JavaScript Cache:** Store fetched user information in a JavaScript variable or a simple cache object within your SPA's state management (e.g., Redux, Vuex, Context API). This is lost on page reload but useful for the current session.
+    -   **`sessionStorage`:** Can be used for short-lived session data, but be mindful of XSS risks if your application has vulnerabilities.
+-   **Considerations:**
+    -   **Cache Invalidation:** How do you update the cache if the user's data changes on Mubarokah ID? This is a common challenge with client-side caches. Strategies include short Time-To-Live (TTL) or mechanisms to proactively clear the cache on certain events (e.g., user profile update action in your app).
+    -   **Security:** Data stored in the browser is less secure than server-side storage.
+
+### 2. Server-Side Caching (Your Application Backend)
+
+-   **Purpose:** Reduce calls from your backend to Mubarokah ID's API servers. This is often the most impactful for OAuth data.
+-   **Techniques:**
+    -   **In-Memory Cache (Application Level):**
+        -   **Tools:** Libraries like `node-cache` (Node.js), `cachetools` (Python), or built-in concurrent maps/dictionaries.
+        -   **Pros:** Very fast access.
+        -   **Cons:** Cache is lost on application restart; not shared across multiple instances of your application if load balanced.
+    -   **Distributed Cache:**
+        -   **Tools:** Redis, Memcached.
+        -   **Pros:** Shared across multiple application instances, persistent (Redis can be configured for persistence), scalable.
+        -   **Cons:** Adds an external dependency, slightly higher latency than in-memory application cache but still very fast.
+-   **Cache Keys:** Use a consistent and unique key for cached items, e.g., `userinfo:{user_id}` or `token_validation:{hashed_access_token_signature}`.
+-   **Time-To-Live (TTL):** Set appropriate TTLs for cached data.
+    -   User profile information: Could be 5 minutes to 1 hour, depending on expected volatility.
+    -   Token introspection results: Very short, e.g., 1-5 minutes.
+    -   JWKS content: Can be longer, e.g., several hours to a day, as these keys change infrequently but have a defined refresh mechanism.
+
+### Conceptual Server-Side Caching for User Info (TypeScript/Node.js)
+
+```typescript
+Conceptual example using an in-memory cache (e.g., node-cache)
+import NodeCache from 'node-cache';
+const userInfoCache = new NodeCache({ stdTTL: 300 }); // Default TTL 5 minutes
+
+async function getCachedUserInfo(accessToken: string, mubarokahUserId: string, fetchFunction: () => Promise<any>): Promise<any> {
+  const cacheKey = `user_info_mubarokah:\${mubarokahUserId}`;
+  let userData = userInfoCache.get(cacheKey);
+
+  if (userData) {
+    console.log(`Cache HIT for user \${mubarokahUserId}`);
+    return userData;
+  }
+
+  console.log(`Cache MISS for user \${mubarokahUserId}, fetching from API...`);
+  userData = await fetchFunction(); // This would call Mubarokah ID's /api/user
+  userInfoCache.set(cacheKey, userData);
+
+  return userData;
+}
+
+Usage:
+const mubarokahApi = new MubarokahOAuthService(...);
+const userIdFromToken = "some_user_id_from_token_sub_claim_or_db";
+const user = await getCachedUserInfo(
+  accessToken,
+  userIdFromToken,
+  () => mubarokahApi.getUserInfo(accessToken)
+);
+```
+
+<Callout type="info" title="Using Redis for Distributed Cache">
+  For applications running multiple instances, a distributed cache like Redis is highly recommended.
+  ```python
+  # Conceptual Python with Redis
+  # import redis
+  # import json
+  # from datetime import timedelta
+
+  # r = redis.Redis(host='localhost', port=6379, db=0)
+
+  # def get_user_from_cache(user_id: str):
+  #     cached_user = r.get(f"mubarokah_user:{user_id}")
+  #     if cached_user:
+  #         return json.loads(cached_user)
+  #     return None
+
+  # def set_user_in_cache(user_id: str, user_data: dict, ttl_seconds: int = 300):
+  #     r.setex(f"mubarokah_user:{user_id}", timedelta(seconds=ttl_seconds), json.dumps(user_data))
+
+  # # Example usage
+  # # user = get_user_from_cache("123")
+  # # if not user:
+  // #     user = fetch_user_from_mubarokah_api("123", access_token) # API call
+  # #     if user:
+  # #         set_user_in_cache("123", user)
+  ```
+</Callout>
+
+## Cache Invalidation Strategies
+
+-   **Time-Based (TTL):** Simplest method. Data expires after a set duration. Suitable for data that can tolerate some staleness.
+-   **Event-Driven:** Invalidate cache entries when a known event occurs that changes the data (e.g., user updates their profile in your application, which then might indicate their Mubarokah ID profile also changed). This is harder to implement if the source of truth is solely Mubarokah ID unless webhooks are provided.
+-   **Write-Through/Read-Through Caching:**
+    -   **Write-Through:** Data is written to cache and backend store simultaneously.
+    -   **Read-Through:** Application reads from cache; if data is missing, cache fetches from backend, stores it, and returns to app.
+    -   These patterns are often managed by caching libraries or services.
+
+## Things to Avoid Caching (or Cache with Extreme Care)
+
+-   **Highly Sensitive Data in Browser Cache:** Avoid caching details like full addresses, phone numbers from `/api/user/details` in browser's `localStorage` if possible.
+-   **Transaction Identifiers:** OAuth `state` parameter or PKCE `code_verifier` should be single-use and tied to a specific session/flow; they are not typically "cached" in the traditional sense but stored temporarily for the duration of that flow.
+-   **API Responses with `Cache-Control: no-store` or `max-age=0`:** Respect these headers if Mubarokah ID's APIs return them.
+
+By thoughtfully implementing caching, you can create a faster, more responsive, and more efficient integration with Mubarokah ID. Remember to balance performance gains with data freshness and security requirements.
+
+---
+title: Caching Strategies for OAuth Performance
+description: Implementing effective caching strategies to optimize the performance of Mubarokah ID OAuth 2.0 integrations.
+---
+
+# Caching Strategies for OAuth Performance
+
+Effective caching can significantly improve the performance and reduce the latency of your Mubarokah ID OAuth 2.0 integration. By caching frequently accessed data that doesn't change often, you can reduce the number of calls to Mubarokah ID's servers and speed up responses to your users.
+
+## What to Cache?
+
+Consider caching the following types of data:
+
+-   **User Information (`/api/user`, `/api/user/details`):** User profile data often doesn't change frequently. Caching this on your server can prevent repeated API calls for the same user within a short timeframe.
+-   **Client Configuration Details (if fetched dynamically):** If your application dynamically fetches OAuth client details (though typically these are static configuration).
+-   **Mubarokah ID's Public Keys / JWKS URI Content (if applicable):** If Mubarokah ID uses JWTs for access tokens and you are validating them locally (which requires fetching the public signing keys), the JWKS URI content can be cached.
+-   **Token Validation Results (Introspection):** If you use a token introspection endpoint, the validation status of an access token can be cached for a short period to avoid repeated introspection calls for the same token.
+
+<Callout type="warning" title="Do Not Cache Sensitive Data Insecurely">
+  Be extremely cautious about caching sensitive data, especially in client-side (browser) caches. Server-side caching offers more control over security. Never cache `client_secret` or unencrypted refresh tokens in a way that could be exposed.
+</Callout>
+
+## Caching Levels and Techniques
+
+### 1. Client-Side Caching (Browser)
+
+-   **Purpose:** Reduce redundant requests from the same user during their session.
+-   **Techniques:**
+    -   **HTTP Caching Headers:** Leverage browser caching for static assets related to your UI (images, CSS, JS). While not directly for OAuth data, it improves overall page load. Mubarokah ID's profile pictures, if served with appropriate cache headers, might be cached by the browser.
+    -   **In-Memory JavaScript Cache:** Store fetched user information in a JavaScript variable or a simple cache object within your SPA's state management (e.g., Redux, Vuex, Context API). This is lost on page reload but useful for the current session.
+    -   **`sessionStorage`:** Can be used for short-lived session data, but be mindful of XSS risks if your application has vulnerabilities.
+-   **Considerations:**
+    -   **Cache Invalidation:** How do you update the cache if the user's data changes on Mubarokah ID? This is a common challenge with client-side caches. Strategies include short Time-To-Live (TTL) or mechanisms to proactively clear the cache on certain events (e.g., user profile update action in your app).
+    -   **Security:** Data stored in the browser is less secure than server-side storage.
+
+### 2. Server-Side Caching (Your Application Backend)
+
+-   **Purpose:** Reduce calls from your backend to Mubarokah ID's API servers. This is often the most impactful for OAuth data.
+-   **Techniques:**
+    -   **In-Memory Cache (Application Level):**
+        -   **Tools:** Libraries like `node-cache` (Node.js), `cachetools` (Python), or built-in concurrent maps/dictionaries.
+        -   **Pros:** Very fast access.
+        -   **Cons:** Cache is lost on application restart; not shared across multiple instances of your application if load balanced.
+    -   **Distributed Cache:**
+        -   **Tools:** Redis, Memcached.
+        -   **Pros:** Shared across multiple application instances, persistent (Redis can be configured for persistence), scalable.
+        -   **Cons:** Adds an external dependency, slightly higher latency than in-memory application cache but still very fast.
+-   **Cache Keys:** Use a consistent and unique key for cached items, e.g., `userinfo:{user_id}` or `token_validation:{hashed_access_token_signature}`.
+-   **Time-To-Live (TTL):** Set appropriate TTLs for cached data.
+    -   User profile information: Could be 5 minutes to 1 hour, depending on expected volatility.
+    -   Token introspection results: Very short, e.g., 1-5 minutes.
+    -   JWKS content: Can be longer, e.g., several hours to a day, as these keys change infrequently but have a defined refresh mechanism.
+
+### Conceptual Server-Side Caching for User Info (TypeScript/Node.js)
+
+```typescript
+// Conceptual example using an in-memory cache (e.g., node-cache)
+// import NodeCache from 'node-cache';
+// const userInfoCache = new NodeCache({ stdTTL: 300 }); // Default TTL 5 minutes
+
+// async function getCachedUserInfo(accessToken: string, mubarokahUserId: string, fetchFunction: () => Promise<any>): Promise<any> {
+//   const cacheKey = `user_info_mubarokah:\${mubarokahUserId}`;
+//   let userData = userInfoCache.get(cacheKey);
+
+//   if (userData) {
+//     console.log(`Cache HIT for user \${mubarokahUserId}`);
+//     return userData;
+//   }
+
+//   console.log(`Cache MISS for user \${mubarokahUserId}, fetching from API...`);
+//   userData = await fetchFunction(); // This would call Mubarokah ID's /api/user
+//   userInfoCache.set(cacheKey, userData);
+
+//   return userData;
+// }
+
+// // Usage:
+// // const mubarokahApi = new MubarokahOAuthService(...);
+// // const userIdFromToken = "some_user_id_from_token_sub_claim_or_db";
+// // const user = await getCachedUserInfo(
+// //   accessToken,
+// //   userIdFromToken,
+// //   () => mubarokahApi.getUserInfo(accessToken)
+// // );
+```
+
+<Callout type="info" title="Using Redis for Distributed Cache">
+  For applications running multiple instances, a distributed cache like Redis is highly recommended.
+  ```python
+  # Conceptual Python with Redis
+  # import redis
+  # import json
+  # from datetime import timedelta
+
+  # r = redis.Redis(host='localhost', port=6379, db=0)
+
+  # def get_user_from_cache(user_id: str):
+  #     cached_user = r.get(f"mubarokah_user:{user_id}")
+  #     if cached_user:
+  #         return json.loads(cached_user)
+  #     return None
+
+  # def set_user_in_cache(user_id: str, user_data: dict, ttl_seconds: int = 300):
+  #     r.setex(f"mubarokah_user:{user_id}", timedelta(seconds=ttl_seconds), json.dumps(user_data))
+
+  # # Example usage
+  # # user = get_user_from_cache("123")
+  # # if not user:
+  // #     user = fetch_user_from_mubarokah_api("123", access_token) # API call
+  # #     if user:
+  # #         set_user_in_cache("123", user)
+  ```
+</Callout>
+
+## Cache Invalidation Strategies
+
+-   **Time-Based (TTL):** Simplest method. Data expires after a set duration. Suitable for data that can tolerate some staleness.
+-   **Event-Driven:** Invalidate cache entries when a known event occurs that changes the data (e.g., user updates their profile in your application, which then might indicate their Mubarokah ID profile also changed). This is harder to implement if the source of truth is solely Mubarokah ID unless webhooks are provided.
+-   **Write-Through/Read-Through Caching:**
+    -   **Write-Through:** Data is written to cache and backend store simultaneously.
+    -   **Read-Through:** Application reads from cache; if data is missing, cache fetches from backend, stores it, and returns to app.
+    -   These patterns are often managed by caching libraries or services.
+
+## Things to Avoid Caching (or Cache with Extreme Care)
+
+-   **Highly Sensitive Data in Browser Cache:** Avoid caching details like full addresses, phone numbers from `/api/user/details` in browser's `localStorage` if possible.
+-   **Transaction Identifiers:** OAuth `state` parameter or PKCE `code_verifier` should be single-use and tied to a specific session/flow; they are not typically "cached" in the traditional sense but stored temporarily for the duration of that flow.
+-   **API Responses with `Cache-Control: no-store` or `max-age=0`:** Respect these headers if Mubarokah ID's APIs return them.
+
+By thoughtfully implementing caching, you can create a faster, more responsive, and more efficient integration with Mubarokah ID. Remember to balance performance gains with data freshness and security requirements.

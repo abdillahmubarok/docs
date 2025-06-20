@@ -1,0 +1,90 @@
+---
+title: Get Basic User Information
+description: API reference for fetching basic profile information of the authenticated user (/api/user).
+api: 'GET /api/user'
+authMethod: 'bearer'
+---
+
+# Get Basic User Information
+
+This endpoint retrieves basic profile information for the user associated with the provided access token.
+
+## Authorization Headers
+<ParamField header="Authorization" type="string" required={true}>
+  The Bearer token for authentication. Example: `Bearer {YOUR_ACCESS_TOKEN}`
+</ParamField>
+<ParamField header="Accept" type="string" default="application/json">
+  Specifies the desired response format.
+</ParamField>
+
+## Required Scope
+-   `view-user`
+
+Your application must request the `view-user` scope during the OAuth authorization flow to access this endpoint. If the access token does not have this scope, a `403 Forbidden` error will be returned.
+
+## Successful Response (200 OK)
+
+A successful request returns a JSON object containing the user's basic profile information. The API playground will show an example response.
+
+**Response Fields:**
+<ResponseField name="id" type="number" required={true}>
+  The unique identifier for the user.
+</ResponseField>
+<ResponseField name="name" type="string" required={true}>
+  The full name of the user.
+</ResponseField>
+<ResponseField name="email" type="string" required={true}>
+  The primary email address of the user.
+</ResponseField>
+<ResponseField name="profile_picture" type="string">
+  URL to the user's profile picture. May be `null`.
+</ResponseField>
+<ResponseField name="username" type="string" required={true}>
+  The user's chosen username.
+</ResponseField>
+<ResponseField name="gender" type="string">
+  The gender of the user (e.g., "male", "female", "other"). May be `null`.
+</ResponseField>
+
+## Example Successful Response
+
+```json
+{
+  "id": 12345,
+  "name": "John Doe",
+  "email": "john.doe@example.com",
+  "profile_picture": "https://s3.amazonaws.com/avatars/user123.jpg",
+  "username": "johndoe",
+  "gender": "male"
+}
+```
+
+## Error Responses
+
+Common error responses include:
+
+-   **401 Unauthorized**:
+    -   If the access token is missing, invalid, or expired.
+    ```json
+    {
+      "message": "Unauthenticated."
+    }
+    ```
+    ```json
+    {
+        "error": "token_expired",
+        "error_description": "The access token provided has expired.",
+        "message": "The access token provided has expired."
+    }
+    ```
+-   **403 Forbidden**:
+    -   If the access token is valid but does not have the required `view-user` scope.
+    ```json
+    {
+      "error": "insufficient_scope",
+      "error_description": "The request requires higher privileges than provided by the access token.",
+      "message": "Invalid scope(s) provided."
+    }
+    ```
+
+Refer to the general [Error Codes section](../error-codes) for more details on other possible errors.

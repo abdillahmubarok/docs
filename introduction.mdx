@@ -1,0 +1,204 @@
+---
+title: Introduction
+description: Welcome to the Mubarokah ID API documentation.
+---
+
+# Introduction
+
+Welcome to the Mubarokah ID API documentation. This documentation provides a comprehensive guide to integrating with Mubarokah ID using OAuth 2.0 for secure authentication and user data access.
+
+**What is "Login with Mubarokah ID"?**
+
+"Login with Mubarokah ID" is an **OAuth 2.0 authentication service** that allows users to log in to your application using their Mubarokah ID accounts, similar to "Login with Google" or "Login with Facebook".
+
+**Core Features:**
+- **🔐 Secure OAuth 2.0**: Full compliance with RFC 6749
+- **👤 User Authentication**: Seamless login experience for users
+- **🎯 Granular Permissions**: Scope-based access control
+- **🚀 Easy Integration**: Standard OAuth 2.0 implementation
+- **🛡️ Enterprise Security**: PKCE, CSRF protection, secure tokens
+- **📱 Universal Compatibility**: Web, Mobile, Desktop apps
+
+Navigate through the documentation using the sidebar to learn more about core concepts, follow step-by-step guides, and explore the API reference.
+---
+title: 'Introduction'
+description: 'Complete OAuth 2.0 integration guide for Mubarokah ID authentication service. Secure, scalable, and developer-friendly authentication solution for modern applications.'
+---
+
+# Mubarokah ID API Documentation
+
+Welcome to the comprehensive documentation for integrating Mubarokah ID's OAuth 2.0 authentication service. Build secure, user-friendly login experiences with our robust authentication platform.
+
+## What is Mubarokah ID?
+
+**Mubarokah ID** is a secure OAuth 2.0 authentication service that enables users to log into your application using their Mubarokah ID accounts. Similar to "Login with Google" or "Login with Facebook", our service provides a seamless authentication experience while maintaining the highest security standards.
+
+<CardGroup cols={2}>
+  <Card
+    title="🔐 Enterprise Security"
+    icon="shield-check"
+  >
+    Full OAuth 2.0 RFC 6749 compliance with PKCE, CSRF protection, and secure token management
+  </Card>
+  <Card
+    title="🚀 Quick Integration"
+    icon="rocket"
+  >
+    Get started in minutes with our comprehensive SDKs and detailed integration guides
+  </Card>
+  <Card
+    title="🎯 Granular Permissions"
+    icon="settings"
+  >
+    Scope-based access control lets users grant specific permissions to your application
+  </Card>
+  <Card
+    title="📱 Universal Support"
+    icon="globe"
+  >
+    Works seamlessly across web, mobile, and desktop applications
+  </Card>
+</CardGroup>
+
+## Key Features
+
+### 🔒 **Security First**
+- **OAuth 2.0 Compliance**: Full adherence to RFC 6749 standards
+- **PKCE Support**: Enhanced security for public clients
+- **Token Encryption**: Secure token storage and transmission
+- **CSRF Protection**: Built-in protection against cross-site request forgery
+
+### 👤 **User Experience**
+- **One-Click Login**: Familiar authentication flow users trust
+- **No Registration Required**: Users authenticate with existing Mubarokah ID accounts
+- **Mobile Optimized**: Seamless experience across all devices
+
+### 🔧 **Developer Experience**
+- **Comprehensive Documentation**: Detailed guides and API references
+- **Framework Examples**: Ready-to-use examples for Laravel, Node.js, Python
+- **Interactive API Playground**: Test endpoints directly in the documentation
+- **24/7 Developer Support**: Get help when you need it
+
+## Supported Scopes
+
+| Scope | Description | Use Cases |
+|-------|-------------|-----------|
+| `view-user` | Access to basic profile information (name, email, username) | User identification, personalization |
+| `detail-user` | Access to detailed profile information (phone, address, bio) | KYC processes, address verification |
+
+<Callout type="info">
+The `detail-user` scope requires administrative approval. Learn more about the [approval process](/core-concepts/scopes-and-permissions#detail-user-scope-approval-process).
+</Callout>
+
+## Quick Start
+
+Get your integration running in under 10 minutes:
+
+<Steps>
+  <Step title="Register Your Application">
+    Contact Mubarokah ID to register your application and receive your OAuth credentials
+  </Step>
+  <Step title="Install Dependencies">
+    Add the necessary HTTP client libraries to your project
+  </Step>
+  <Step title="Configure Environment">
+    Set up your client ID, secret, and redirect URI
+  </Step>
+  <Step title="Implement OAuth Flow">
+    Add the authorization and callback handling to your application
+  </Step>
+</Steps>
+
+[Get Started →](/quickstart)
+
+## Integration Examples
+
+Choose your preferred framework and follow our detailed integration guides:
+
+<CardGroup cols={3}>
+  <Card
+    title="Laravel (PHP)"
+    icon="php"
+    href="/guides/framework-integration/laravel"
+  >
+    Complete Laravel integration with service providers and middleware
+  </Card>
+  <Card
+    title="Node.js + Express"
+    icon="js"
+    href="/guides/framework-integration/nodejs"
+  >
+    TypeScript-ready Express.js implementation with session management
+  </Card>
+  <Card
+    title="Python + FastAPI"
+    icon="python"
+    href="/guides/framework-integration/python"
+  >
+    Async FastAPI integration with Pydantic models and Redis caching
+  </Card>
+</CardGroup>
+
+## API Endpoints
+
+### OAuth 2.0 Endpoints
+
+| Endpoint | Purpose | Documentation |
+|----------|---------|---------------|
+| `GET /oauth/authorize` | Start the authorization flow | [View Details →](/api-reference/oauth/authorize) |
+| `POST /oauth/token` | Exchange code for tokens | [View Details →](/api-reference/oauth/token) |
+
+### User Information API
+
+| Endpoint | Scope Required | Documentation |
+|----------|----------------|---------------|
+| `GET /api/user` | `view-user` | [View Details →](/api-reference/user/get-user-info) |
+| `GET /api/user/details` | `detail-user` | [View Details →](/api-reference/user/get-user-details) |
+
+## Security & Compliance
+
+Security is at the core of Mubarokah ID's design:
+
+- **OAuth 2.0 Security Best Practices**: Implementation follows the latest IETF security recommendations
+- **Token Lifecycle Management**: Automatic token rotation and secure storage patterns
+- **Audit Logging**: Complete audit trails for all authentication events
+- **Privacy Controls**: Granular user consent and data access controls
+
+[Read Security Guide →](/security/oauth-checklist)
+
+## Support & Community
+
+<CardGroup cols={3}>
+  <Card
+    title="📧 Email Support"
+    href="mailto:hey@mubarokah.com"
+  >
+    Get technical support via email
+  </Card>
+  <Card
+    title="💬 WhatsApp Community"
+    href="https://chat.whatsapp.com/HQtyJMqfqq41KlrHLCvcFZ"
+  >
+    Join our developer community
+  </Card>
+  <Card
+    title="📱 Dashboard"
+    href="https://mubarokah.id/dashboard"
+  >
+    Manage your applications
+  </Card>
+</CardGroup>
+
+## What's Next?
+
+Ready to integrate Mubarokah ID? Here's your roadmap:
+
+1. **[Quick Start Guide](/quickstart)** - Get up and running in 10 minutes
+2. **[Core Concepts](/core-concepts/what-is-mubarokah-id)** - Understand the architecture
+3. **[OAuth Flow Guide](/guides/oauth-flow)** - Learn the authentication process
+4. **[Security Checklist](/security/oauth-checklist)** - Secure your integration
+5. **[Production Deployment](/production/deployment)** - Go live with confidence
+
+---
+
+*Building secure authentication has never been easier. Let's get started!*

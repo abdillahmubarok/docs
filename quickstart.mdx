@@ -1,0 +1,293 @@
+---
+title: 'Quick Start Guide'
+description: 'Get started with Mubarokah ID OAuth 2.0 integration in under 10 minutes'
+---
+
+# Quick Start Guide
+
+Get your application integrated with Mubarokah ID OAuth 2.0 authentication in just a few steps. This guide will have you up and running in under 10 minutes.
+
+## Prerequisites
+
+Before you begin, make sure you have:
+
+<CardGroup cols={2}>
+  <Card
+    title="Application Registration"
+    icon="id-card"
+  >
+    Contact Mubarokah ID to register your application and get your credentials
+  </Card>
+  <Card
+    title="HTTPS Endpoint"
+    icon="shield-check"
+  >
+    Your redirect URI must use HTTPS in production
+  </Card>
+</CardGroup>
+
+## Step 1: Get Your Credentials
+
+After registering with Mubarokah ID, you'll receive:
+
+- **Client ID**: Your application's unique identifier
+- **Client Secret**: Keep this secure on your server
+- **Redirect URI**: Where users return after authentication
+
+## Step 2: Install Dependencies
+
+Choose your preferred framework and install the necessary packages:
+
+<CodeGroup>
+  ```bash Laravel/PHP
+  composer require guzzlehttp/guzzle
+  ```
+
+  ```bash Node.js
+  npm install axios
+  ```
+
+  ```bash Python
+  pip install httpx fastapi
+  ```
+</CodeGroup>
+
+## Step 3: Environment Configuration
+
+Set up your environment variables:
+
+```env .env
+MUBAROKAH_CLIENT_ID=your_client_id_here
+MUBAROKAH_CLIENT_SECRET=your_client_secret_here
+MUBAROKAH_REDIRECT_URI=https://yourapp.com/auth/callback
+MUBAROKAH_BASE_URL=https://mubarokah.id
+```
+
+## Step 4: Implement the OAuth Flow
+
+### Authorization Request
+
+Redirect users to Mubarokah ID for authentication:
+
+<CodeGroup>
+  ```javascript JavaScript
+  const authUrl = new URL('https://mubarokah.id/oauth/authorize');
+  authUrl.searchParams.set('response_type', 'code');
+  authUrl.searchParams.set('client_id', process.env.MUBAROKAH_CLIENT_ID);
+  authUrl.searchParams.set('redirect_uri', process.env.MUBAROKAH_REDIRECT_URI);
+  authUrl.searchParams.set('scope', 'view-user');
+  authUrl.searchParams.set('state', generateSecureState());
+
+  // Redirect user
+  res.redirect(authUrl.toString());
+  ```
+
+  ```php PHP
+  $params = [
+      'response_type' => 'code',
+      'client_id' => env('MUBAROKAH_CLIENT_ID'),
+      'redirect_uri' => env('MUBAROKAH_REDIRECT_URI'),
+      'scope' => 'view-user',
+      'state' => $this->generateSecureState()
+  ];
+
+  $authUrl = 'https://mubarokah.id/oauth/authorize?' . http_build_query($params);
+  return redirect($authUrl);
+  ```
+
+  ```python Python
+  from urllib.parse import urlencode
+
+  params = {
+      'response_type': 'code',
+      'client_id': settings.MUBAROKAH_CLIENT_ID,
+      'redirect_uri': settings.MUBAROKAH_REDIRECT_URI,
+      'scope': 'view-user',
+      'state': generate_secure_state()
+  }
+
+  auth_url = f"https://mubarokah.id/oauth/authorize?{urlencode(params)}"
+  return RedirectResponse(url=auth_url)
+  ```
+</CodeGroup>
+
+### Handle the Callback
+
+Exchange the authorization code for tokens:
+
+<CodeGroup>
+  ```javascript JavaScript
+  app.get('/auth/callback', async (req, res) => {
+    const { code, state } = req.query;
+    
+    // Verify state parameter
+    if (!verifyState(state)) {
+      return res.status(400).send('Invalid state');
+    }
+
+    try {
+      // Exchange code for tokens
+      const tokenResponse = await axios.post('https://mubarokah.id/oauth/token', {
+        grant_type: 'authorization_code',
+        client_id: process.env.MUBAROKAH_CLIENT_ID,
+        client_secret: process.env.MUBAROKAH_CLIENT_SECRET,
+        code: code,
+        redirect_uri: process.env.MUBAROKAH_REDIRECT_URI
+      });
+
+      const { access_token } = tokenResponse.data;
+      
+      // Get user info
+      const userResponse = await axios.get('https://mubarokah.id/api/user', {
+        headers: { Authorization: `Bearer ${access_token}` }
+      });
+
+      // Handle successful login
+      req.session.user = userResponse.data;
+      res.redirect('/dashboard');
+    } catch (error) {
+      res.status(500).send('Authentication failed');
+    }
+  });
+  ```
+
+  ```php PHP
+  public function handleCallback(Request $request)
+  {
+      $code = $request->get('code');
+      $state = $request->get('state');
+
+      // Verify state
+      if (!$this->verifyState($state)) {
+          return response('Invalid state', 400);
+      }
+
+      try {
+          // Exchange code for tokens
+          $response = Http::post('https://mubarokah.id/oauth/token', [
+              'grant_type' => 'authorization_code',
+              'client_id' => env('MUBAROKAH_CLIENT_ID'),
+              'client_secret' => env('MUBAROKAH_CLIENT_SECRET'),
+              'code' => $code,
+              'redirect_uri' => env('MUBAROKAH_REDIRECT_URI')
+          ]);
+
+          $accessToken = $response->json('access_token');
+
+          // Get user info
+          $userResponse = Http::withToken($accessToken)
+              ->get('https://mubarokah.id/api/user');
+
+          // Handle successful login
+          session(['user' => $userResponse->json()]);
+          return redirect('/dashboard');
+      } catch (Exception $e) {
+          return response('Authentication failed', 500);
+      }
+  }
+  ```
+
+  ```python Python
+  @app.get("/auth/callback")
+  async def handle_callback(
+      code: str, 
+      state: str,
+      request: Request
+  ):
+      # Verify state
+      if not verify_state(state):
+          raise HTTPException(status_code=400, detail="Invalid state")
+
+      try:
+          # Exchange code for tokens
+          async with httpx.AsyncClient() as client:
+              token_response = await client.post(
+                  "https://mubarokah.id/oauth/token",
+                  data={
+                      "grant_type": "authorization_code",
+                      "client_id": settings.MUBAROKAH_CLIENT_ID,
+                      "client_secret": settings.MUBAROKAH_CLIENT_SECRET,
+                      "code": code,
+                      "redirect_uri": settings.MUBAROKAH_REDIRECT_URI
+                  }
+              )
+              
+              tokens = token_response.json()
+              access_token = tokens["access_token"]
+              
+              # Get user info
+              user_response = await client.get(
+                  "https://mubarokah.id/api/user",
+                  headers={"Authorization": f"Bearer {access_token}"}
+              )
+              
+              user_data = user_response.json()
+              
+              # Handle successful login
+              request.session["user"] = user_data
+              return RedirectResponse(url="/dashboard")
+      except Exception as e:
+          raise HTTPException(status_code=500, detail="Authentication failed")
+  ```
+</CodeGroup>
+
+## Step 5: Test Your Integration
+
+1. Start your application
+2. Navigate to your login page
+3. Click "Login with Mubarokah ID"
+4. Complete the authentication flow
+5. Verify you receive user data
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card
+    title="Security Best Practices"
+    icon="shield"
+    href="/security/oauth-checklist"
+  >
+    Learn essential security measures for production
+  </Card>
+  <Card
+    title="Framework Integration Guides"
+    icon="code"
+    href="/guides/framework-integration/laravel"
+  >
+    Detailed examples for Laravel, Node.js, and Python
+  </Card>
+  <Card
+    title="User Permissions & Scopes"
+    icon="users"
+    href="/core-concepts/scopes-and-permissions"
+  >
+    Understanding different access levels
+  </Card>
+  <Card
+    title="API Reference"
+    icon="book"
+    href="/api-reference/oauth/authorize"
+  >
+    Complete API documentation
+  </Card>
+</CardGroup>
+
+## Common Issues
+
+<AccordionGroup>
+  <Accordion title="Invalid redirect URI">
+    Ensure your redirect URI exactly matches what's registered with Mubarokah ID, including the protocol (https://) and any trailing slashes.
+  </Accordion>
+  
+  <Accordion title="Invalid client credentials">
+    Double-check your `MUBAROKAH_CLIENT_ID` and `MUBAROKAH_CLIENT_SECRET` environment variables. Make sure there are no extra spaces or characters.
+  </Accordion>
+  
+  <Accordion title="State parameter mismatch">
+    Implement proper state validation to prevent CSRF attacks. Store the state in the user's session and verify it matches on callback.
+  </Accordion>
+</AccordionGroup>
+
+## Support
+
+Need help? Contact our support team at [hey@mubarokah.com](mailto:hey@mubarokah.com) or join our [WhatsApp community](https://chat.whatsapp.com/HQtyJMqfqq41KlrHLCvcFZ).

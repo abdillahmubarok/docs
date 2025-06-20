@@ -1,0 +1,101 @@
+{
+  "$schema": "https://mintlify.com/docs.json",
+  "theme": "mint",
+  "name": "Mubarokah ID",
+  "colors": {
+    "primary": "#0c0f3c",
+    "light": "#22a6f9",
+    "dark": "#566ef8"
+  },
+  "favicon": "/favicon-mubarokah-id.ico",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Guides",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": [
+              "index",
+              "quickstart",
+              "development"
+            ]
+          },
+          {
+            "group": "Essentials",
+            "pages": [
+              "essentials/markdown",
+              "essentials/code",
+              "essentials/images",
+              "essentials/settings",
+              "essentials/navigation",
+              "essentials/reusable-snippets"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
+        "groups": [
+          {
+            "group": "API Documentation",
+            "pages": [
+              "api-reference/introduction"
+            ]
+          },
+          {
+            "group": "Endpoint Examples",
+            "pages": [
+              "api-reference/endpoint/get",
+              "api-reference/endpoint/create",
+              "api-reference/endpoint/delete",
+              "api-reference/endpoint/webhook"
+            ]
+          }
+        ]
+      }
+    ],
+    "global": {
+      "anchors": [
+        {
+          "anchor": "Documentation",
+          "href": "https://docs.mubarokah.id",
+          "icon": "book-open-cover"
+        },
+        {
+          "anchor": "Community",
+          "href": "https://chat.whatsapp.com/HQtyJMqfqq41KlrHLCvcFZ",
+          "icon": "whatsapp"
+        },
+        {
+          "anchor": "Blog",
+          "href": "https://mubarokah.com/posts",
+          "icon": "newspaper"
+        }
+      ]
+    }
+  },
+  "logo": {
+    "light": "/logo/mubarokah-id-light.svg",
+    "dark": "/logo/mubarokah-id-dark.svg"
+  },
+  "navbar": {
+    "links": [
+      {
+        "label": "Support",
+        "href": "mailto:hey@mubarokah.com"
+      }
+    ],
+    "primary": {
+      "type": "button",
+      "label": "Dashboard",
+      "href": "https://mubarokah.id/dashboard"
+    }
+  },
+  "footer": {
+    "socials": {
+      "x": "https://x.com/mubarokah_id/",
+      "linkedin": "https://www.linkedin.com/company/mubarokah/"
+    }
+  }
+}

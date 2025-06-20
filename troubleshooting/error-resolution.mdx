@@ -1,0 +1,194 @@
+---
+title: Error Resolution Framework
+description: A framework and guide for troubleshooting and resolving common issues with Mubarokah ID OAuth 2.0 integration.
+---
+
+# Error Resolution Framework
+
+Encountering errors during OAuth 2.0 integration or API interaction is common. This guide provides a structured approach to troubleshooting and resolving issues with your Mubarokah ID integration.
+
+## General Troubleshooting Flow
+
+When an error occurs, follow this general diagnostic process:
+
+```mermaid
+flowchart TD
+    A[OAuth/API Error Detected] --> B{What type of error is it?};
+    B -- HTTP 4xx Client Error (e.g., 400, 401, 403) --> C[Client-Side Issues Check];
+    B -- HTTP 5xx Server Error (e.g., 500, 503) --> D[Server-Side Issues (Mubarokah ID or Yours)];
+    B -- Network Error (e.g., timeout, DNS) --> E[Infrastructure/Connectivity Check];
+    B -- Unexpected Behavior / Other --> F[Logic/Integration Review];
+
+    C --> C1[1. Verify Client Configuration (client_id, redirect_uri)];
+    C --> C2[2. Validate Request Parameters & Format (scopes, grant_type, code)];
+    C --> C3[3. Check Token Validity & Scopes];
+    C --> C4[4. Review User Consent & Permissions];
+
+    D --> D1[1. Check Mubarokah ID Status Page (if available)];
+    D --> D2[2. Review Your Server Logs for details from Mubarokah ID];
+    D --> D3[3. Retry with Exponential Backoff (for transient 503/504)];
+
+    E --> E1[1. Check Your Server's Network Connectivity to Mubarokah ID];
+    E --> E2[2. Verify DNS Resolution for mubarokah.id];
+    E --> E3[3. Check for SSL/TLS Issues];
+
+    F --> F1[1. Review OAuth Flow Implementation Steps];
+    F --> F2[2. Check Code Logic for Handling Callbacks, Tokens];
+    F --> F3[3. Compare with Documentation Examples];
+
+    subgraph ResolutionPath [Apply Fix & Test]
+        direction LR
+        Fix[Apply Potential Fix] --> Test[Test Resolution]
+        Test -- Fixed --> Solved[Document Solution & Monitor]
+        Test -- Not Fixed --> Escalate[Re-evaluate or Escalate to Mubarokah Support]
+    end
+
+    C1 & C2 & C3 & C4 --> Fix;
+    D1 & D2 & D3 --> Fix;
+    E1 & E2 & E3 --> Fix;
+    F1 & F2 & F3 --> Fix;
+```
+
+## Common Issue Resolution Guide
+
+This guide provides potential causes and resolution steps for specific Mubarokah ID OAuth errors. Always refer to the [Error Codes Reference](../api-reference/error-codes) for standard definitions.
+
+---
+
+### Error: `invalid_client`
+*(Typically from `/oauth/token` endpoint)*
+
+- **Severity:** High
+- **Possible Causes:**
+  - `client_id` provided does not exist or is incorrect.
+  - `client_secret` provided is incorrect (when authenticating client in request body).
+  - Client application has been revoked or disabled by Mubarokah ID administrators.
+  - Mismatch in client authentication method (e.g., sending credentials in body when Basic Auth is expected, or vice-versa).
+- **Resolution Steps:**
+  1. **Verify `client_id`:** Double-check the `client_id` in your application's configuration against the one provided by Mubarokah ID.
+  2. **Verify `client_secret`:** Ensure the `client_secret` is correct and securely stored. Do not log it.
+  3. **Check Client Status:** Contact Mubarokah ID support or check your developer dashboard (if available) to ensure your client application is active and not revoked.
+  4. **Verify Auth Method:** Confirm if Mubarokah ID expects client credentials in the request body or as an HTTP Basic Authentication header for the token endpoint. Adjust your request accordingly.
+  5. **Database Check (if self-hosting Mubarokah ID):** Ensure the client exists and is valid in the `oauth_clients` table (or equivalent).
+- **Prevention Tips:**
+  - Store credentials securely using environment variables or a secrets management system.
+  - Implement configuration validation in your application startup.
+  - Monitor client status if a developer dashboard is available.
+
+---
+
+### Error: `invalid_grant`
+*(Typically from `/oauth/token` endpoint when using `authorization_code` or `refresh_token` grant types)*
+
+- **Severity:** Medium (often recoverable by user re-auth)
+- **Possible Causes (for `authorization_code`):**
+  - Authorization code (`code`) has expired (Mubarokah ID codes are typically short-lived, e.g., 10 minutes).
+  - Authorization code has already been used (they are single-use).
+  - Authorization code was issued to a different `client_id`.
+  - `redirect_uri` in the token request does not exactly match the `redirect_uri` used in the initial `/oauth/authorize` request.
+  - If using PKCE, the `code_verifier` does not match the `code_challenge` sent in the authorization request.
+- **Possible Causes (for `refresh_token`):**
+  - Refresh token is expired.
+  - Refresh token has been revoked (e.g., due to user password change, security event, or if a new refresh token was issued and the old one invalidated).
+  - Refresh token was issued to a different `client_id`.
+- **Resolution Steps:**
+  1. **Authorization Code:**
+     - Ensure your application exchanges the code for a token promptly after receiving it.
+     - Verify that the `redirect_uri` in the token request is identical to the one used to obtain the code.
+     - If using PKCE, ensure the correct `code_verifier` is being sent.
+     - If the code is likely expired or used, the user must re-initiate the OAuth authorization flow from the beginning.
+  2. **Refresh Token:**
+     - If a refresh token fails, it's generally an indication that the user needs to re-authenticate. Redirect the user to the start of the OAuth authorization flow.
+     - Ensure you are correctly storing and retrieving the latest valid refresh token if rotation is in effect.
+- **Prevention Tips:**
+  - Implement robust state management for the OAuth flow.
+  - Handle authorization codes immediately upon receipt.
+  - For refresh tokens, have a clear process to guide users to re-authenticate if refresh fails.
+  - Correctly implement PKCE if it's part of your flow.
+
+---
+
+### Error: `invalid_scope`
+*(From `/oauth/authorize` or `/oauth/token` if scope validation occurs, or `/api/*` endpoints if token lacks required scope for a resource)*
+
+- **Severity:** Medium
+- **Possible Causes:**
+  - Requested scope string is malformed (e.g., not space-separated).
+  - One or more requested scopes do not exist or are not recognized by Mubarokah ID.
+  - Your client application is not authorized/registered to request certain scopes.
+  - For `/api/*` calls: The access token used does not contain the specific scope required by that API endpoint.
+  - The `detail-user` scope was requested, but your application has not received administrative approval for it.
+- **Resolution Steps:**
+  1. **Verify Scope Names:** Check the spelling and format of all requested scopes (e.g., `view-user`, `detail-user`).
+  2. **Check Client Permissions:** Ensure your application is permitted to request the scopes you're asking for. Consult Mubarokah ID documentation or your client registration details.
+  3. **`detail-user` Scope:** If requesting `detail-user`, confirm your application has completed the [admin approval process](../core-concepts/scopes-and-permissions#detail-user-scope-approval-process).
+  4. **API Calls:** Ensure the access token you are using for an API call was granted the necessary scopes during the user consent phase.
+- **Prevention Tips:**
+  - Only request scopes that your application genuinely needs (principle of least privilege).
+  - Validate scope configurations in your application.
+  - Clearly document the scopes your application requires and why.
+  - Plan for the `detail-user` approval process early if needed.
+
+---
+
+### Error: `access_denied`
+*(Typically from `/oauth/authorize` redirect)*
+
+- **Severity:** Low (from a system perspective, as it's often user-driven)
+- **Possible Causes:**
+  - The user explicitly denied consent on the Mubarokah ID authorization/consent screen.
+  - The user's session with Mubarokah ID expired before they could complete the consent.
+  - Mubarokah ID policies or security measures prevented authorization for this user/client (e.g., blocked client, suspicious user activity).
+- **Resolution Steps:**
+  1. **Inform User:** Gracefully inform the user that access was denied and they cannot use the feature requiring Mubarokah ID integration.
+  2. **Retry Option:** Optionally, provide a way for the user to try the "Login with Mubarokah ID" process again.
+  3. **Check Client Status:** If this happens consistently for all users, verify your client application is not blocked or disabled by Mubarokah ID.
+- **Prevention Tips:**
+  - Provide a clear explanation to users on why you are requesting permissions (scopes) before redirecting them to Mubarokah ID.
+  - Ensure your application handles this denial gracefully without crashing or confusing the user.
+
+---
+
+### Error: `unapproved_scope` (API Error)
+*(Typically from `/api/user/details` or other sensitive API endpoints)*
+
+- **Severity:** Medium
+- **Possible Causes:**
+  - Your application is attempting to use an access token with the `detail-user` scope (or another admin-restricted scope), but your `client_id` has not yet been administratively approved by Mubarokah ID for that level of access.
+  - The approval request was submitted but is still pending or was rejected.
+- **Resolution Steps:**
+  1. **Verify Approval Status:** Check your Mubarokah ID developer dashboard or contact support to confirm the approval status for the `detail-user` (or other relevant) scope for your application.
+  2. **Submit/Follow Up on Approval:** If not yet approved, follow the [approval process detailed in Scopes & Permissions](../core-concepts/scopes-and-permissions#detail-user-scope-approval-process).
+  3. **Alternative Scopes:** If immediate access to detailed info isn't critical, ensure your application can fall back gracefully to using only basic scopes like `view-user`.
+- **Prevention Tips:**
+  - Plan for the scope approval process well in advance if your application requires sensitive data.
+  - Prepare all necessary documentation for the approval request.
+  - Implement fallback mechanisms in your application if a high-privilege scope is not yet available.
+
+---
+
+### General API Errors (401 Unauthorized, 403 Forbidden from `/api/*`)
+
+- **`401 Unauthorized` (`token_expired` or `token_invalid`):**
+  - **Cause:** Access token is expired, malformed, or revoked.
+  - **Resolution:**
+    1. If you have a refresh token, attempt to use it to get a new access token.
+    2. If refresh fails or no refresh token is available, the user must re-authenticate via the full OAuth flow.
+
+- **`403 Forbidden` (`insufficient_scope`):**
+  - **Cause:** Access token is valid but does not contain the specific scope needed for the requested API resource.
+  - **Resolution:**
+    1. Verify the API endpoint's required scopes in the [API Reference](../api-reference/oauth/authorize).
+    2. Ensure your application requested (and was granted) these scopes during the initial OAuth authorization.
+    3. If necessary, the user may need to re-authorize your application, potentially with a `prompt=consent` parameter if you need to ensure they are presented with the scope request again.
+
+<Tip>
+**Debugging Steps:**
+
+1. **Check Logs:** Your application's server-side logs are the first place to look for detailed error messages from your HTTP client or OAuth library when interacting with Mubarokah ID.
+2. **Reproduce Consistently:** Try to find steps to reproduce the error reliably.
+3. **Isolate the Issue:** Is it happening for all users or specific users? All requests or specific types of requests?
+4. **Use a Tool like Postman/Insomnia:** For `/oauth/token` and API calls, manually craft requests using a tool like Postman to isolate issues with request formation or parameters, away from your application code.
+5. **Check Mubarokah ID Documentation:** Refer to the official Mubarokah ID API documentation for specific error details if available.
+6. **Contact Mubarokah ID Support:** If you suspect an issue on Mubarokah ID's side or cannot resolve a persistent problem, gather all relevant details (timestamp, `client_id`, error messages, request details if possible without logging tokens) and contact their support.
+</Tip>
