@@ -79,7 +79,12 @@
               "core-concepts/prerequisites",
               "core-concepts/scopes-and-permissions"
             ]
-          },
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
+        "groups": [
           {
             "group": "Integration Guides",
             "pages": [
@@ -94,6 +99,27 @@
               }
             ]
           },
+          {
+            "group": "OAuth Endpoints",
+            "pages": [
+              "api-reference/oauth/authorize",
+              "api-reference/oauth/token"
+            ]
+          },
+          {
+            "group": "User API",
+            "pages": [
+              "api-reference/user/get-user-info",
+              "api-reference/user/get-user-details"
+            ]
+          },
+          {
+            "group": "Reference",
+            "pages": [
+                "api-reference/error-codes"
+            ]
+          },
+          
           {
             "group": "Security",
             "pages": [
@@ -117,31 +143,6 @@
               "troubleshooting/error-resolution",
               "troubleshooting/runbooks",
               "operations/monitoring-debugging"
-            ]
-          }
-        ]
-      },
-      {
-        "tab": "API Reference",
-        "groups": [
-          {
-            "group": "OAuth Endpoints",
-            "pages": [
-              "api-reference/oauth/authorize",
-              "api-reference/oauth/token"
-            ]
-          },
-          {
-            "group": "User API",
-            "pages": [
-              "api-reference/user/get-user-info",
-              "api-reference/user/get-user-details"
-            ]
-          },
-          {
-            "group": "Reference",
-            "pages": [
-                "api-reference/error-codes"
             ]
           }
         ]
