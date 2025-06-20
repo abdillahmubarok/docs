@@ -141,6 +141,17 @@
             ]
           }
         ]
+      },
+      {
+        "tab": "Knowledge Base",
+        "groups": [
+          {
+            "group": "Knowledgebase",
+            "pages": [
+              "knowledgebase"
+            ]
+          }
+        ]
       }
     ]
   },
