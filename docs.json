@@ -13,6 +13,10 @@
     "light": "#22a6f9",
     "dark": "#566ef8"
   },
+  "appearance": {
+    "default": "system",
+    "strict": false
+  },
   "api": {
     "mdx": {
       "server": "https://mubarokah.id",
@@ -163,7 +167,101 @@
       "linkedin": "https://www.linkedin.com/company/mubarokah/",
       "website": "https://mubarokah.com",
       "youtube": "https://youtube.com/@mubarokahdigitalnusantara"
-    }
+    },
+    "links": [
+      {
+        "header": "Product",
+        "items": [
+          {
+            "label": "Web Development",
+            "href": "https://mubarokah.com/services/web-development"
+          },
+          {
+            "label": "Mobile App Development",
+            "href": "https://mubarokah.com/services/mobile-app-development"
+          },
+          {
+            "label": "Digital Marketing",
+            "href": "https://mubarokah.com/services/digital-marketing"
+          },
+          {
+            "label": "View all our services",
+            "href": "https://mubarokah.com/services"
+          },
+          {
+            "label": "See also our products",
+            "href": "https://mudin.myr.id/"
+          }
+        ]
+      },
+      {
+        "header": "Developers",
+        "items": [
+          {
+            "label": "Documentation",
+            "href": "https://docs.mubarokah.id"
+          },
+          {
+            "label": "API Reference",
+            "href": "https://docs.mubarokah.id/guides/oauth-flow"
+          },
+          {
+            "label": "Examples",
+            "href": "https://docs.mubarokah.id/guides/framework-integration/laravel"
+          }
+        ]
+      },
+      {
+        "header": "Company",
+        "items": [
+          {
+            "label": "About Us",
+            "href": "https://mubarokah.com/about"
+          },
+          {
+            "label": "Blog",
+            "href": "https://mubarokah.com/posts"
+          },
+          {
+            "label": "Careers",
+            "href": "https://mubarokah.com/careers"
+          },
+          {
+            "label": "Contact",
+            "href": "https://mubarokah.com/contact"
+          },
+          {
+            "label": "Partnership Program",
+            "href": "https://partners.mubarokah.com/"
+          }
+        ]
+      },
+      {
+        "header": "Support",
+        "items": [
+          {
+            "label": "Help Center",
+            "href": "https://docs.mubarokah.id/kb/knowledgebase"
+          },
+          {
+            "label": "Community",
+            "href": "https://chat.whatsapp.com/HQtyJMqfqq41KlrHLCvcFZ"
+          },
+          {
+            "label": "Report Issue",
+            "href": "https://s.id/023w4"
+          },
+          {
+            "label": "Privacy Policy",
+            "href": "https://mubarokah.com/privacy"
+          },
+          {
+            "label": "System Status",
+            "href": "https://mdn.cronitorstatus.com/"
+          }
+        ]
+      }
+    ]
   },
   "seo": {
     "metatags": {
