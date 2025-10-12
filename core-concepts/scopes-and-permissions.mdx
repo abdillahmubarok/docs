@@ -1,6 +1,6 @@
 ---
-title: Scopes and Permissions
-description: Learn about OAuth 2.0 scopes used by Mubarokah ID, their associated permissions, and the approval process for sensitive scopes.
+title: "Scopes and Permissions"
+description: "Learn about OAuth 2.0 scopes used by Mubarokah ID, their associated permissions, and the approval process for sensitive scopes."
 ---
 
 # Scopes and Permissions
@@ -43,13 +43,13 @@ graph TD
 
 ### Scope Permission Matrix
 
-| Scope         | Data Access Granted                                                                 | Approval Process for Client | Common Use Cases                                                                 | API Endpoints Covered                               |
-|---------------|-------------------------------------------------------------------------------------|-----------------------------|----------------------------------------------------------------------------------|-----------------------------------------------------|
-| `view-user`   | ✅ Basic profile attributes (ID, name, email, username, profile picture, gender).     | **Automatic** upon user consent. | • Displaying user's name/avatar. <br/> • Personalizing the user experience. <br/> • Basic account identification. | [`/api/user`](../api-reference/user/get-user-info)    |
-| `detail-user` | ✅ All data from `view-user`. <br/> ✅ Sensitive personal info (phone, DOB, address, bio). | **Manual Admin Review** of your application is required. | • KYC (Know Your Customer) processes. <br/> • Address verification for services. <br/> • Contact information integration. | [`/api/user/details`](../api-reference/user/get-user-details) |
+| Scope         | Data Access Granted                                                                       | Approval Process for Client                              | Common Use Cases                                                                                                            | API Endpoints Covered                                         |
+| ------------- | ----------------------------------------------------------------------------------------- | -------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------- |
+| `view-user`   | ✅ Basic profile attributes (ID, name, email, username, profile picture, gender).          | **Automatic** upon user consent.                         | • Displaying user's name/avatar. <br /> • Personalizing the user experience. <br /> • Basic account identification.         | [`/api/user`](../api-reference/user/get-user-info)            |
+| `detail-user` | ✅ All data from `view-user`. <br /> ✅ Sensitive personal info (phone, DOB, address, bio). | **Manual Admin Review** of your application is required. | • KYC (Know Your Customer) processes. <br /> • Address verification for services. <br /> • Contact information integration. | [`/api/user/details`](../api-reference/user/get-user-details) |
 
 <Info>
-Always request the minimum number of scopes necessary for your application's functionality. Requesting excessive scopes can lead to lower user consent rates.
+  Always request the minimum number of scopes necessary for your application's functionality. Requesting excessive scopes can lead to lower user consent rates.
 </Info>
 
 ## Practical Implementation Examples
@@ -67,12 +67,12 @@ const generateAuthURL = () => {
     state: generateRandomState()
   });
   
-  return `https://mubarokah.id/oauth/authorize?${authParams}`;
+  return `https://accounts.mubarokah.com/oauth/authorize?${authParams}`;
 };
 
 // Step 2: Exchange authorization code for access token
 const exchangeCodeForToken = async (authorizationCode) => {
-  const response = await fetch('https://mubarokah.id/oauth/token', {
+  const response = await fetch('https://accounts.mubarokah.com/oauth/token', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/x-www-form-urlencoded'
@@ -91,7 +91,7 @@ const exchangeCodeForToken = async (authorizationCode) => {
 
 // Step 3: Fetch user information
 const getUserInfo = async (accessToken) => {
-  const response = await fetch('https://mubarokah.id/api/user', {
+  const response = await fetch('https://accounts.mubarokah.com/api/user', {
     headers: {
       'Authorization': `Bearer ${accessToken}`,
       'Accept': 'application/json'
@@ -147,13 +147,13 @@ const generateDetailedAuthURL = () => {
     prompt: 'consent' // Ensure user sees the consent screen
   });
   
-  return `https://mubarokah.id/oauth/authorize?${authParams}`;
+  return `https://accounts.mubarokah.com/oauth/authorize?${authParams}`;
 };
 
 // Fetch detailed user information (requires admin approval)
 const getUserDetails = async (accessToken) => {
   try {
-    const response = await fetch('https://mubarokah.id/api/user/details', {
+    const response = await fetch('https://accounts.mubarokah.com/api/user/details', {
       headers: {
         'Authorization': `Bearer ${accessToken}`,
         'Accept': 'application/json'
@@ -212,7 +212,7 @@ const getCompleteUserProfile = async (accessToken) => {
 ```javascript
 // Refresh access token using refresh token
 const refreshAccessToken = async (refreshToken) => {
-  const response = await fetch('https://mubarokah.id/oauth/token', {
+  const response = await fetch('https://accounts.mubarokah.com/oauth/token', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/x-www-form-urlencoded'
@@ -273,11 +273,11 @@ class MubarokahAPIClient {
   }
   
   async getUserInfo() {
-    return this.makeAuthenticatedRequest('https://mubarokah.id/api/user');
+    return this.makeAuthenticatedRequest('https://accounts.mubarokah.com/api/user');
   }
   
   async getUserDetails() {
-    return this.makeAuthenticatedRequest('https://mubarokah.id/api/user/details');
+    return this.makeAuthenticatedRequest('https://accounts.mubarokah.com/api/user/details');
   }
 }
 ```
@@ -292,30 +292,28 @@ The `detail-user` scope provides access to sensitive personal information. Due t
   <Step title="Application Registration">
     Your application must first be registered with Mubarokah ID and have basic OAuth integration working with the `view-user` scope.
   </Step>
-  
   <Step title="Documentation Submission">
     Submit the following documentation:
+
     - **Privacy Policy**: Clear statement on how user data will be handled
     - **Data Usage Justification**: Detailed explanation of why detailed user information is needed
     - **Security Measures**: Description of data protection measures in your application
     - **Compliance Information**: Evidence of GDPR, CCPA, or local data protection compliance
   </Step>
-  
   <Step title="Technical Review">
     Your application will undergo a security review including:
+
     - Code review of OAuth implementation
     - Security audit of data handling procedures
     - Testing of data deletion capabilities
   </Step>
-  
   <Step title="Approval Decision">
-    If approved, your application can successfully request the `detail-user` scope during OAuth flows.
-    If rejected, reasons will be provided with guidance for resubmission.
+    If approved, your application can successfully request the `detail-user` scope during OAuth flows. If rejected, reasons will be provided with guidance for resubmission.
   </Step>
 </Steps>
 
 <Warning>
-**Important**: Even after obtaining the `detail-user` scope in an access token, your application will receive a `403 Forbidden` error when calling `/api/user/details` unless your client application has received administrative approval.
+  **Important**: Even after obtaining the `detail-user` scope in an access token, your application will receive a `403 Forbidden` error when calling `/api/user/details` unless your client application has received administrative approval.
 </Warning>
 
 ### Approval Process Implementation
@@ -324,7 +322,7 @@ The `detail-user` scope provides access to sensitive personal information. Due t
 // Check if client application has approval for detail-user scope
 const checkScopeApproval = async (clientId) => {
   try {
-    const response = await fetch(`https://mubarokah.id/api/admin/scope-approval/${clientId}`, {
+    const response = await fetch(`https://accounts.mubarokah.com/api/admin/scope-approval/${clientId}`, {
       headers: {
         'Authorization': `Bearer ${adminToken}`,
         'Accept': 'application/json'
@@ -377,7 +375,6 @@ Handling user data, especially sensitive information accessible via the `detail-
     const authURL = generateAuthURL(['view-user', 'detail-user']); // Only if truly needed
     ```
   </Tab>
-  
   <Tab title="📝 Purpose Limitation">
     ```javascript
     // Good: Clear purpose-specific data usage
@@ -403,7 +400,6 @@ Handling user data, especially sensitive information accessible via the `detail-
     }
     ```
   </Tab>
-  
   <Tab title="🛡️ Data Security">
     ```javascript
     // Implementation with encryption and secure storage
@@ -435,7 +431,6 @@ Handling user data, especially sensitive information accessible via the `detail-
     }
     ```
   </Tab>
-  
   <Tab title="🗑️ Data Retention">
     ```javascript
     // Automatic data cleanup implementation
@@ -588,6 +583,5 @@ const handleUserAuthentication = async (authCode) => {
 ```
 
 <Note>
-This implementation provides production-ready code examples that can be directly used and tested with the Mubarokah ID OAuth system. All endpoints use the correct `https://mubarokah.id/` domain and include proper error handling, security measures, and compliance considerations.
+  This implementation provides production-ready code examples that can be directly used and tested with the Mubarokah ID OAuth system. All endpoints use the correct `https://accounts.mubarokah.com/` domain and include proper error handling, security measures, and compliance considerations.
 </Note>
-```

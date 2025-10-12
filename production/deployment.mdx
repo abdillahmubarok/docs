@@ -1,6 +1,6 @@
 ---
-title: Production Deployment Considerations
-description: Guide for configuring your environment and deploying a Mubarokah ID OAuth 2.0 integrated application to production.
+title: "Production Deployment Considerations"
+description: "Guide for configuring your environment and deploying a Mubarokah ID OAuth 2.0 integrated application to production."
 ---
 
 # Production Deployment Considerations
@@ -15,26 +15,27 @@ Your production environment must be configured securely and correctly to interac
 
 It is **highly recommended** to manage sensitive configuration values using environment variables rather than hardcoding them into your application.
 
-<Callout type="important" title="Secure Your Credentials!">
+<important>
   Your `MUBAROKAH_CLIENT_SECRET` is a sensitive credential. Treat it like a password. Ensure it is not checked into version control and is only accessible to authorized personnel and your production application environment.
-</Callout>
+</important>
 
 **Essential Environment Variables:**
 
-| Variable                     | Example Value                                  | Description                                                                                                                               |
-|------------------------------|------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------|
-| `MUBAROKAH_CLIENT_ID`        | `your_production_client_id`                    | Your application's unique Client ID provided by Mubarokah ID for the production environment.                                                |
-| `MUBAROKAH_CLIENT_SECRET`    | `your_strong_production_client_secret`         | Your application's confidential Client Secret for the production environment. **Keep this highly secure.**                                  |
-| `MUBAROKAH_REDIRECT_URI`     | `https://yoursecureapp.com/auth/mubarokah/callback` | The exact, HTTPS-secured URL Mubarokah ID will redirect users back to after authentication. Must be registered with Mubarokah ID.        |
-| `MUBAROKAH_BASE_URL`         | `https://mubarokah.id`                         | The base URL for Mubarokah ID's OAuth and API endpoints.                                                                                    |
-| `APP_ENV` or `NODE_ENV`      | `production`                                   | Sets your application's environment to production mode (often enables optimizations and disables debugging features).                     |
-| `SESSION_SECRET` or `APP_KEY`| `a_very_long_and_random_secure_string`         | A strong, random secret key used for session encryption and signing. Generate a unique one for production.                                |
-| `LOG_LEVEL`                  | `info` or `warn`                               | Controls the verbosity of your application logs. `info` is common for production, `warn` or `error` for less verbosity.                    |
-| `DATABASE_URL` (if applicable)| `postgres://user:pass@host:port/dbname`        | Connection string for your production database (if your app uses one for user data, token storage etc.).                                  |
-| `REDIS_URL` (if applicable)  | `redis://:pass@host:port/0`                    | Connection string for your production Redis instance (if used for caching, session storage, or token storage).                            |
-| `TOKEN_ENCRYPTION_KEY` (if applicable) | `another_strong_random_fernet_key`   | If you are encrypting tokens (e.g., refresh tokens) at rest in your database/cache, this is the key used for that encryption.             |
+| Variable                               | Example Value                                       | Description                                                                                                                       |
+| -------------------------------------- | --------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| `MUBAROKAH_CLIENT_ID`                  | `your_production_client_id`                         | Your application's unique Client ID provided by Mubarokah ID for the production environment.                                      |
+| `MUBAROKAH_CLIENT_SECRET`              | `your_strong_production_client_secret`              | Your application's confidential Client Secret for the production environment. **Keep this highly secure.**                        |
+| `MUBAROKAH_REDIRECT_URI`               | `https://yoursecureapp.com/auth/mubarokah/callback` | The exact, HTTPS-secured URL Mubarokah ID will redirect users back to after authentication. Must be registered with Mubarokah ID. |
+| `MUBAROKAH_BASE_URL`                   | `https://accounts.mubarokah.com`                    | The base URL for Mubarokah ID's OAuth and API endpoints.                                                                          |
+| `APP_ENV` or `NODE_ENV`                | `production`                                        | Sets your application's environment to production mode (often enables optimizations and disables debugging features).             |
+| `SESSION_SECRET` or `APP_KEY`          | `a_very_long_and_random_secure_string`              | A strong, random secret key used for session encryption and signing. Generate a unique one for production.                        |
+| `LOG_LEVEL`                            | `info` or `warn`                                    | Controls the verbosity of your application logs. `info` is common for production, `warn` or `error` for less verbosity.           |
+| `DATABASE_URL` (if applicable)         | `postgres://user:pass@host:port/dbname`             | Connection string for your production database (if your app uses one for user data, token storage etc.).                          |
+| `REDIS_URL` (if applicable)            | `redis://:pass@host:port/0`                         | Connection string for your production Redis instance (if used for caching, session storage, or token storage).                    |
+| `TOKEN_ENCRYPTION_KEY` (if applicable) | `another_strong_random_fernet_key`                  | If you are encrypting tokens (e.g., refresh tokens) at rest in your database/cache, this is the key used for that encryption.     |
 
-**Example `.env.production` (conceptual):**
+**`Example .env.production (conceptual):`**
+
 ```env
 # Application Environment
 APP_ENV=production
@@ -47,7 +48,7 @@ APP_URL=https://yoursecureapp.com # Your application's main URL
 MUBAROKAH_CLIENT_ID=prod_client_id_from_mubarokah
 MUBAROKAH_CLIENT_SECRET=very_strong_and_secret_production_key
 MUBAROKAH_REDIRECT_URI=https://yoursecureapp.com/auth/mubarokah/callback
-MUBAROKAH_BASE_URL=https://mubarokah.id
+MUBAROKAH_BASE_URL=https://accounts.mubarokah.com
 
 # Database (Example)
 DB_CONNECTION=mysql
@@ -67,28 +68,30 @@ REDIS_PORT=6379
 ```
 
 ### HTTPS Enforcement
--   **Your Application:** Your entire production application, especially the OAuth `redirect_uri`, must be served over HTTPS. Use TLS certificates from a trusted Certificate Authority (CA) (e.g., Let's Encrypt).
--   **Mubarokah ID Endpoints:** Mubarokah ID's endpoints will also be HTTPS. Ensure your server can make outbound HTTPS connections and has up-to-date CA root certificates to validate Mubarokah ID's SSL certificates.
+
+- **Your Application:** Your entire production application, especially the OAuth `redirect_uri`, must be served over HTTPS. Use TLS certificates from a trusted Certificate Authority (CA) (e.g., Let's Encrypt).
+- **Mubarokah ID Endpoints:** Mubarokah ID's endpoints will also be HTTPS. Ensure your server can make outbound HTTPS connections and has up-to-date CA root certificates to validate Mubarokah ID's SSL certificates.
 
 ### Server Configuration
--   **Web Server (Nginx, Apache):**
-    -   Configure for security (e.g., disable unnecessary modules, set appropriate headers like HSTS, X-Frame-Options, X-Content-Type-Options).
-    -   Set up robust logging.
-    -   Configure reverse proxy correctly if your application server (Node.js, Python, Java) runs behind it.
--   **Firewall:** Configure firewalls to only allow necessary inbound traffic (e.g., HTTPS on port 443) and outbound traffic (e.g., to Mubarokah ID's IP range if known and restrictive outbound policies are in place).
--   **System Updates:** Keep your server operating systems and all software packages up-to-date with the latest security patches.
+
+- **Web Server (Nginx, Apache):**
+  - Configure for security (e.g., disable unnecessary modules, set appropriate headers like HSTS, X-Frame-Options, X-Content-Type-Options).
+  - Set up robust logging.
+  - Configure reverse proxy correctly if your application server (Node.js, Python, Java) runs behind it.
+- **Firewall:** Configure firewalls to only allow necessary inbound traffic (e.g., HTTPS on port 443) and outbound traffic (e.g., to Mubarokah ID's IP range if known and restrictive outbound policies are in place).
+- **System Updates:** Keep your server operating systems and all software packages up-to-date with the latest security patches.
 
 ## General Deployment Advice
 
--   **Automated Deployments:** Use a CI/CD (Continuous Integration/Continuous Deployment) pipeline for consistent and reliable deployments. (Covered more in [CI/CD section](./ci-cd)).
--   **Health Checks:** Implement health check endpoints in your application that your load balancer or orchestration platform (e.g., Kubernetes) can use to determine if an instance is healthy. (Covered more in [Health Monitoring section](./health-monitoring)).
--   **Logging and Monitoring:** Set up comprehensive logging and monitoring for your application and infrastructure to detect issues quickly. (Covered more in [Monitoring & Debugging section](../../operations/monitoring-debugging)).
--   **Backups:** Ensure regular backups of your database and critical application data.
--   **Secrets Management:** For higher security, consider using a dedicated secrets management system (e.g., HashiCorp Vault, AWS Secrets Manager, Azure Key Vault) to manage `MUBAROKAH_CLIENT_SECRET` and other sensitive credentials, rather than just environment variables.
--   **Scalability:** Design your application to be scalable, especially the components handling OAuth callbacks, as login events can sometimes cause load spikes. Consider stateless application servers if possible, with session/token data managed in a shared store like Redis or a database.
+- **Automated Deployments:** Use a CI/CD (Continuous Integration/Continuous Deployment) pipeline for consistent and reliable deployments. (Covered more in [CI/CD section](./ci-cd)).
+- **Health Checks:** Implement health check endpoints in your application that your load balancer or orchestration platform (e.g., Kubernetes) can use to determine if an instance is healthy. (Covered more in [Health Monitoring section](./health-monitoring)).
+- **Logging and Monitoring:** Set up comprehensive logging and monitoring for your application and infrastructure to detect issues quickly. (Covered more in [Monitoring & Debugging section](../../operations/monitoring-debugging)).
+- **Backups:** Ensure regular backups of your database and critical application data.
+- **Secrets Management:** For higher security, consider using a dedicated secrets management system (e.g., HashiCorp Vault, AWS Secrets Manager, Azure Key Vault) to manage `MUBAROKAH_CLIENT_SECRET` and other sensitive credentials, rather than just environment variables.
+- **Scalability:** Design your application to be scalable, especially the components handling OAuth callbacks, as login events can sometimes cause load spikes. Consider stateless application servers if possible, with session/token data managed in a shared store like Redis or a database.
 
-<Callout type="tip" title="Staging Environment">
+<tip>
   Before deploying to production, always test your integration thoroughly in a staging environment that mirrors your production setup as closely as possible. Use separate, non-production Mubarokah ID client credentials for staging.
-</Callout>
+</tip>
 
 Deploying a secure and robust OAuth integration requires attention to detail at each step, from configuration to ongoing operations.

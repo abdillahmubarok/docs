@@ -1,6 +1,6 @@
 ---
-title: Penetration Testing Guide for OAuth Integrations
-description: Guidance on conducting penetration tests for your Mubarokah ID OAuth 2.0 integration.
+title: "Penetration Testing Guide for OAuth Integrations"
+description: "Guidance on conducting penetration tests for your Mubarokah ID OAuth 2.0 integration."
 ---
 
 # Penetration Testing Guide for OAuth Integrations
@@ -8,20 +8,20 @@ description: Guidance on conducting penetration tests for your Mubarokah ID OAut
 Penetration testing (pen-testing) is a crucial step in verifying the security of your Mubarokah ID OAuth 2.0 integration. It involves simulating attacks on your application to identify vulnerabilities that could be exploited. This guide provides a checklist and areas to focus on during such tests.
 
 <Note>
-This guide is for testing **your application's integration** with Mubarokah ID, not for testing Mubarokah ID itself. Always obtain proper authorization before conducting any security testing against third-party services.
+  This guide is for testing **your application's integration** with Mubarokah ID, not for testing Mubarokah ID itself. Always obtain proper authorization before conducting any security testing against third-party services.
 </Note>
 
 ## Scope of Testing
 
 Your penetration test should cover all aspects of your application that interact with the Mubarokah ID OAuth flow, including:
 
--   The initiation of the OAuth flow (redirect to Mubarokah ID).
--   The callback endpoint (`redirect_uri`) that handles the authorization code and state.
--   The exchange of the authorization code for tokens.
--   Storage and handling of access tokens and refresh tokens.
--   API calls made to Mubarokah ID resource servers using access tokens.
--   Session management related to the authenticated state.
--   Logout functionality and token invalidation (if applicable).
+- The initiation of the OAuth flow (redirect to Mubarokah ID).
+- The callback endpoint (`redirect_uri`) that handles the authorization code and state.
+- The exchange of the authorization code for tokens.
+- Storage and handling of access tokens and refresh tokens.
+- API calls made to Mubarokah ID resource servers using access tokens.
+- Session management related to the authenticated state.
+- Logout functionality and token invalidation (if applicable).
 
 ## Security Testing Checklist
 
@@ -29,49 +29,39 @@ This checklist is based on common vulnerabilities and areas specific to OAuth 2.
 
 ### OAuth Flow Manipulation
 
-- [ ] **CSRF on Redirect URI:** Attempt to forge requests to the callback endpoint without a valid `state` parameter or with a mismatched `state`. Verify that the application rejects these requests.
-
-- [ ] **Authorization Code Interception and Replay:**
+- **CSRF on Redirect URI:** Attempt to forge requests to the callback endpoint without a valid `state` parameter or with a mismatched `state`. Verify that the application rejects these requests.
+- **Authorization Code Interception and Replay:**
   - Test if authorization codes can be intercepted (e.g., via referrer headers if redirects are not handled carefully, or via browser history).
   - Attempt to replay a used authorization code. It should be rejected.
   - Test the lifetime of the authorization code; it should be short.
-
-- [ ] **Redirect URI Manipulation (Open Redirector):**
+- **Redirect URI Manipulation (Open Redirector):**
   - Attempt to manipulate the `redirect_uri` parameter sent to Mubarokah ID to redirect users to a malicious site.
   - Test if your application, after login, has any open redirect vulnerabilities that could be chained.
-
-- [ ] **PKCE Downgrade Attack (for Public Clients):** If using PKCE, ensure the server correctly requires the `code_verifier` if a `code_challenge` was presented. Test by omitting the `code_verifier`.
-
-- [ ] **Scope Escalation/Injection:** Attempt to request unauthorized scopes or manipulate the scope parameter. Verify that only allowed and user-consented scopes are granted.
-
-- [ ] **State Parameter Weakness:** Ensure the `state` parameter is unguessable and sufficiently long.
+- **PKCE Downgrade Attack (for Public Clients):** If using PKCE, ensure the server correctly requires the `code_verifier` if a `code_challenge` was presented. Test by omitting the `code_verifier`.
+- **Scope Escalation/Injection:** Attempt to request unauthorized scopes or manipulate the scope parameter. Verify that only allowed and user-consented scopes are granted.
+- **State Parameter Weakness:** Ensure the `state` parameter is unguessable and sufficiently long.
 
 ### Token Handling and Storage
 
-- [ ] **Token Leakage:**
+- **Token Leakage:**
   - Check for tokens in browser history, logs (client and server-side), URLs (access tokens should not be in URLs), or via insecure transmission (non-HTTPS).
   - Investigate XSS vulnerabilities in your application that could lead to token theft from browser storage (localStorage, sessionStorage).
-
-- [ ] **Insecure Token Storage:**
+- **Insecure Token Storage:**
   - If tokens are stored in cookies, verify `HttpOnly`, `Secure`, and `SameSite` attributes are correctly set.
   - If using web storage, assess XSS risk.
   - For mobile, verify use of Keychain/Keystore.
-
-- [ ] **Session Management:** Test for session fixation, session hijacking, and proper session invalidation on logout.
+- **Session Management:** Test for session fixation, session hijacking, and proper session invalidation on logout.
 
 ### Client-Side Security
 
-- [ ] **Client Secret Exposure (for Confidential Clients):** Ensure the `client_secret` is not exposed in client-side code (JavaScript, mobile app binaries).
-
-- [ ] **XSS Vulnerabilities:** Thoroughly test your application for XSS, especially on pages that handle or display data received from Mubarokah ID (e.g., user profile information).
-
-- [ ] **Input Validation:** Test all inputs related to the OAuth flow (e.g., query parameters on callback) for common vulnerabilities like injection, path traversal, etc.
+- **Client Secret Exposure (for Confidential Clients):** Ensure the `client_secret` is not exposed in client-side code (JavaScript, mobile app binaries).
+- **XSS Vulnerabilities:** Thoroughly test your application for XSS, especially on pages that handle or display data received from Mubarokah ID (e.g., user profile information).
+- **Input Validation:** Test all inputs related to the OAuth flow (e.g., query parameters on callback) for common vulnerabilities like injection, path traversal, etc.
 
 ### API Interaction
 
-- [ ] **Improper Error Handling:** Check how your application handles error responses from Mubarokah ID (e.g., token errors, API errors). Ensure it doesn't leak sensitive information.
-
-- [ ] **Information Disclosure:** Ensure that error messages or debugging information do not inadvertently reveal sensitive details about the system or tokens.
+- **Improper Error Handling:** Check how your application handles error responses from Mubarokah ID (e.g., token errors, API errors). Ensure it doesn't leak sensitive information.
+- **Information Disclosure:** Ensure that error messages or debugging information do not inadvertently reveal sensitive details about the system or tokens.
 
 ## Example Test Scenarios (Conceptual Bash Script)
 
@@ -82,8 +72,8 @@ The following script provides conceptual ideas for testing certain aspects. **It
 # Conceptual OAuth Security Testing Snippets for Mubarokah ID Integration
 
 # --- Configuration (Replace with your actual values) ---
-MUBAROKAH_AUTH_URL="https://mubarokah.id/oauth/authorize"
-MUBAROKAH_TOKEN_URL="https://mubarokah.id/oauth/token"
+MUBAROKAH_AUTH_URL="https://accounts.mubarokah.com/oauth/authorize"
+MUBAROKAH_TOKEN_URL="https://accounts.mubarokah.com/oauth/token"
 CLIENT_ID="your_client_id"
 # CLIENT_SECRET="your_client_secret" # Should not be used directly in scripts like this for actual tests if possible
 REDIRECT_URI="https://yourapp.com/auth/mubarokah/callback"
@@ -133,23 +123,24 @@ echo "⚠️ Remember: This is not exhaustive. Use dedicated security tools and 
 ```
 
 <Warning>
-The script above is for illustrative purposes only. Real penetration testing requires careful planning, appropriate tools, and adherence to ethical guidelines and legal agreements. Always ensure you have permission before testing any system.
+  The script above is for illustrative purposes only. Real penetration testing requires careful planning, appropriate tools, and adherence to ethical guidelines and legal agreements. Always ensure you have permission before testing any system.
 </Warning>
 
 ## Tools for Penetration Testing
 
--   **Intercepting Proxies:** OWASP ZAP, Burp Suite.
--   **Web Vulnerability Scanners:** Nessus, Acunetix, Nikto (use responsibly and with permission).
--   **Browser Developer Tools:** For inspecting requests, responses, cookies, and storage.
--   **Mobile Security Framework (MobSF):** For mobile application analysis.
--   **Custom Scripts:** Python with libraries like `requests` and `httpx` can be useful for crafting specific test cases.
+- **Intercepting Proxies:** OWASP ZAP, Burp Suite.
+- **Web Vulnerability Scanners:** Nessus, Acunetix, Nikto (use responsibly and with permission).
+- **Browser Developer Tools:** For inspecting requests, responses, cookies, and storage.
+- **Mobile Security Framework (MobSF):** For mobile application analysis.
+- **Custom Scripts:** Python with libraries like `requests` and `httpx` can be useful for crafting specific test cases.
 
 ## Reporting
 
 Document all findings, including:
--   Vulnerability description.
--   Steps to reproduce.
--   Potential impact.
--   Recommendations for remediation.
+
+- Vulnerability description.
+- Steps to reproduce.
+- Potential impact.
+- Recommendations for remediation.
 
 By conducting thorough penetration tests, you can gain greater confidence in the security of your Mubarokah ID OAuth 2.0 integration.

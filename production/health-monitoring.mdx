@@ -1,6 +1,6 @@
 ---
-title: Health Monitoring & Observability
-description: Setting up health checks, comprehensive monitoring, and observability for your Mubarokah ID integrated application in production.
+title: "Health Monitoring & Observability"
+description: "Setting up health checks, comprehensive monitoring, and observability for your Mubarokah ID integrated application in production."
 ---
 
 # Health Monitoring & Observability
@@ -11,15 +11,16 @@ Once your Mubarokah ID integrated application is deployed to production, continu
 
 Implement health check endpoints in your application that can be used by load balancers, orchestration platforms (like Kubernetes), or uptime monitoring services.
 
--   **Purpose:** To indicate whether your application instance is running correctly and able to serve requests, including its ability to interact with critical downstream services if necessary (though this needs careful consideration).
--   **Basic Health Check:**
-    -   Responds with HTTP 200 OK if the application is running.
-    -   Example path: `/health`, `/status`.
--   **Deep Health Check (Optional & Use with Caution):**
-    -   May check connectivity to essential services like your database, cache (Redis), or even make a lightweight test call to a Mubarokah ID status endpoint (if available and permitted).
-    -   **Caution:** Deep checks that call external services can be problematic if those services are temporarily down, causing your app instances to appear unhealthy and be restarted or removed from service unnecessarily. It's often better to have separate monitoring for downstream dependencies.
+- **Purpose:** To indicate whether your application instance is running correctly and able to serve requests, including its ability to interact with critical downstream services if necessary (though this needs careful consideration).
+- **Basic Health Check:**
+  - Responds with HTTP 200 OK if the application is running.
+  - Example path: `/health`, `/status`.
+- **Deep Health Check (Optional & Use with Caution):**
+  - May check connectivity to essential services like your database, cache (Redis), or even make a lightweight test call to a Mubarokah ID status endpoint (if available and permitted).
+  - **Caution:** Deep checks that call external services can be problematic if those services are temporarily down, causing your app instances to appear unhealthy and be restarted or removed from service unnecessarily. It's often better to have separate monitoring for downstream dependencies.
 
 **Conceptual Health Controller:**
+
 ```php
 <?php
 namespace App\Http\Controllers;
@@ -88,7 +89,7 @@ class HealthController extends Controller
             // or check against a known Mubarokah ID status endpoint.
             // For example, trying to resolve DNS or a HEAD request to base URL.
             $client = new \GuzzleHttp\Client(['timeout' => 5]);
-            $response = $client->head(config('services.mubarokah.base_url', 'https://mubarokah.id'));
+            $response = $client->head(config('services.mubarokah.base_url', 'https://accounts.mubarokah.com'));
             if ($response->getStatusCode() >= 200 && $response->getStatusCode() < 400) {
                 return ['status' => 'ok'];
             }
@@ -99,9 +100,10 @@ class HealthController extends Controller
     }
 }
 ```
-<Callout type="tip">
-Define clearly what constitutes "healthy" for your application. A basic check usually confirms the app process is running and can respond.
-</Callout>
+
+<tip>
+  Define clearly what constitutes "healthy" for your application. A basic check usually confirms the app process is running and can respond.
+</tip>
 
 ## Comprehensive Monitoring Setup
 
@@ -110,40 +112,44 @@ Beyond simple uptime checks, implement comprehensive monitoring to gain insights
 ### Key Metrics to Monitor:
 
 **1. OAuth Flow Metrics:**
-    -   **Authorization Request Rate:** Number of redirects to Mubarokah ID's `/oauth/authorize`.
-    -   **Callback Success/Failure Rate:** Success and error rates for your `/auth/mubarokah/callback` endpoint.
-        -   Distinguish errors (e.g., `invalid_state`, `access_denied` from user, Mubarokah ID errors).
-    -   **Token Exchange Success/Failure Rate:** Success and error rates for calls to Mubarokah ID's `/oauth/token` endpoint.
-        -   Track specific errors like `invalid_grant`, `invalid_client`.
-    -   **Token Refresh Success/Failure Rate:** Monitor how often refresh token attempts succeed or fail.
-    -   **Latency:**
-        -   Duration of your callback processing.
-        -   Latency of token exchange calls to Mubarokah ID.
-        -   Latency of token refresh calls.
 
-**2. API Interaction Metrics (calls from your server to Mubarokah ID's `/api/*` endpoints):**
-    -   **Request Rate:** Number of calls to `/api/user`, `/api/user/details`, etc.
-    -   **Success/Error Rate:** HTTP status codes (2xx vs. 4xx/5xx) from these API calls.
-        -   Specifically track `401 Unauthorized` (token issues) and `403 Forbidden` (scope issues).
-    -   **Latency:** Response times for these API calls.
+- **Authorization Request Rate:** Number of redirects to Mubarokah ID's `/oauth/authorize`.
+- **Callback Success/Failure Rate:** Success and error rates for your `/auth/mubarokah/callback` endpoint.
+  - Distinguish errors (e.g., `invalid_state`, `access_denied` from user, Mubarokah ID errors).
+- **Token Exchange Success/Failure Rate:** Success and error rates for calls to Mubarokah ID's `/oauth/token` endpoint.
+  - Track specific errors like `invalid_grant`, `invalid_client`.
+- **Token Refresh Success/Failure Rate:** Monitor how often refresh token attempts succeed or fail.
+- **Latency:**
+  - Duration of your callback processing.
+  - Latency of token exchange calls to Mubarokah ID.
+  - Latency of token refresh calls.
+
+**`2. API Interaction Metrics (calls from your server to Mubarokah ID's /api/* endpoints):`**
+
+- **Request Rate:** Number of calls to `/api/user`, `/api/user/details`, etc.
+- **Success/Error Rate:** HTTP status codes (2xx vs. 4xx/5xx) from these API calls.
+  - Specifically track `401 Unauthorized` (token issues) and `403 Forbidden` (scope issues).
+- **Latency:** Response times for these API calls.
 
 **3. Application Performance Metrics (APM):**
-    -   Overall application request throughput, latency, and error rates.
-    -   CPU, memory, disk I/O, network I/O utilization of your servers.
-    -   Database performance (query latency, connection pool usage).
-    -   Cache performance (hit/miss rates, latency).
+
+- Overall application request throughput, latency, and error rates.
+- CPU, memory, disk I/O, network I/O utilization of your servers.
+- Database performance (query latency, connection pool usage).
+- Cache performance (hit/miss rates, latency).
 
 **4. User-Centric Metrics:**
-    -   Successful user logins via Mubarokah ID over time.
-    -   Time taken for a user to complete the entire login flow.
+
+- Successful user logins via Mubarokah ID over time.
+- Time taken for a user to complete the entire login flow.
 
 ### Tools for Monitoring:
 
--   **Application Performance Monitoring (APM):** Sentry, New Relic, Datadog, Dynatrace. These often provide SDKs to automatically instrument your code.
--   **Metrics Collection & Visualization:**
-    -   **Prometheus:** An open-source metrics collection and alerting toolkit.
-    -   **Grafana:** An open-source platform for monitoring and observability, often used with Prometheus, InfluxDB, or other data sources to create dashboards.
--   **Log Management:** Elasticsearch/OpenSearch + Kibana/OpenSearch Dashboards (ELK/OpenSearch Stack), Splunk, Logtail, Datadog Logs.
+- **Application Performance Monitoring (APM):** Sentry, New Relic, Datadog, Dynatrace. These often provide SDKs to automatically instrument your code.
+- **Metrics Collection & Visualization:**
+  - **Prometheus:** An open-source metrics collection and alerting toolkit.
+  - **Grafana:** An open-source platform for monitoring and observability, often used with Prometheus, InfluxDB, or other data sources to create dashboards.
+- **Log Management:** Elasticsearch/OpenSearch + Kibana/OpenSearch Dashboards (ELK/OpenSearch Stack), Splunk, Logtail, Datadog Logs.
 
 ### Conceptual Metrics Middleware
 
@@ -210,27 +216,29 @@ class MetricsMiddleware
     }
 }
 ```
-<Callout type="info">
-Register this middleware in your Laravel application's HTTP kernel. Use a proper metrics library (like a Prometheus or StatsD client) instead of just logging for production.
-</Callout>
+
+<info>
+  Register this middleware in your Laravel application's HTTP kernel. Use a proper metrics library (like a Prometheus or StatsD client) instead of just logging for production.
+</info>
 
 ### Example Grafana Dashboard Panels (Conceptual)
 
 If using Prometheus and Grafana, you might create dashboards with panels like:
 
--   **OAuth Request Rate:** `sum(rate(oauth_requests_total{job="your-app", route=~"mubarokah.*"}[5m])) by (route)`
--   **OAuth Callback Error Rate:** `sum(rate(oauth_requests_total{job="your-app", route="mubarokah.callback", status_code=~"4.*|5.*"}[5m])) / sum(rate(oauth_requests_total{job="your-app", route="mubarokah.callback"}[5m])) * 100`
--   **Token Exchange Latency (p95):** `histogram_quantile(0.95, sum(rate(http_request_duration_ms_bucket{job="your-app", route="mubarokah_token_exchange_internal_call"}[5m])) by (le))` (Assuming you instrument the call to the token endpoint).
--   **API Call Latency to Mubarokah ID (p95):** Similar histogram for calls to `/api/user`.
--   **Active User Sessions via Mubarokah ID:** A custom metric your app might expose.
+- **OAuth Request Rate:** `sum(rate(oauth_requests_total{job="your-app", route=~"mubarokah.*"}[5m])) by (route)`
+- **OAuth Callback Error Rate:** `sum(rate(oauth_requests_total{job="your-app", route="mubarokah.callback", status_code=~"4.*|5.*"}[5m])) / sum(rate(oauth_requests_total{job="your-app", route="mubarokah.callback"}[5m])) * 100`
+- **Token Exchange Latency (p95):** `histogram_quantile(0.95, sum(rate(http_request_duration_ms_bucket{job="your-app", route="mubarokah_token_exchange_internal_call"}[5m])) by (le))` (Assuming you instrument the call to the token endpoint).
+- **API Call Latency to Mubarokah ID (p95):** Similar histogram for calls to `/api/user`.
+- **Active User Sessions via Mubarokah ID:** A custom metric your app might expose.
 
 ## Alerting
 
 Set up alerts based on your key metrics to be notified of issues proactively:
--   High error rates for OAuth callbacks or token exchanges.
--   Significant increase in latency for Mubarokah ID API calls.
--   Mubarokah ID client errors (e.g., `invalid_client` if it suddenly starts appearing).
--   Health check failures.
--   High resource utilization on your servers.
+
+- High error rates for OAuth callbacks or token exchanges.
+- Significant increase in latency for Mubarokah ID API calls.
+- Mubarokah ID client errors (e.g., `invalid_client` if it suddenly starts appearing).
+- Health check failures.
+- High resource utilization on your servers.
 
 Effective health monitoring, metrics collection, and alerting are vital for maintaining a reliable and performant Mubarokah ID integration.

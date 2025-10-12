@@ -1,6 +1,6 @@
 ---
-title: Node.js (Express + TypeScript) Integration
-description: Guide to integrating Mubarokah ID OAuth 2.0 with a Node.js, Express, and TypeScript application.
+title: "Node.js (Express + TypeScript) Integration"
+description: "Guide to integrating Mubarokah ID OAuth 2.0 with a Node.js, Express, and TypeScript application."
 ---
 
 # Node.js (Express + TypeScript) Integration Guide
@@ -9,12 +9,12 @@ This guide demonstrates an enterprise-level setup for integrating Mubarokah ID O
 
 ## Prerequisites
 
--   Node.js and npm/yarn installed.
--   TypeScript configured in your project.
--   Express framework.
--   An HTTP client like `axios`: `npm install axios` or `yarn add axios`
--   Session management (e.g., `express-session`): `npm install express-session`
--   Optional: A library for PKCE generation if not implementing manually (e.g., `pkce-challenge`).
+- Node.js and npm/yarn installed.
+- TypeScript configured in your project.
+- Express framework.
+- An HTTP client like `axios`: `npm install axios` or `yarn add axios`
+- Session management (e.g., `express-session`): `npm install express-session`
+- Optional: A library for PKCE generation if not implementing manually (e.g., `pkce-challenge`).
 
 ## Project Structure (Conceptual)
 
@@ -52,13 +52,14 @@ graph LR
 
 Define interfaces for configuration, token responses, and user information.
 
-**`src/types/mubarokah.ts`:**
+**`src/types/mubarokah.ts:`**
+
 ```typescript
 export interface MubarokahConfig {
   clientId: string;
   clientSecret: string;
   redirectUri: string;
-  baseUrl: string; // e.g., https://mubarokah.id
+  baseUrl: string; // e.g., https://accounts.mubarokah.com
 }
 
 export interface TokenResponse {
@@ -98,7 +99,8 @@ export interface StoredTokenData extends TokenResponse {
 
 This service encapsulates all interactions with Mubarokah ID's OAuth endpoints.
 
-**`src/services/MubarokahOAuthService.ts`:**
+**`src/services/MubarokahOAuthService.ts:`**
+
 ```typescript
 import axios, { AxiosInstance, AxiosError } from 'axios';
 import crypto from 'crypto'; // For PKCE and state generation
@@ -238,7 +240,8 @@ export class MubarokahOAuthService {
 
 This service would handle secure storage and retrieval of tokens. For brevity, a full implementation (e.g., using Redis or a database) is omitted.
 
-**`src/services/TokenService.ts` (Interface and basic in-memory example):**
+**`src/services/TokenService.ts (Interface and basic in-memory example):`**
+
 ```typescript
 import { StoredTokenData, UserInfo, TokenResponse } from "../types/mubarokah";
 
@@ -280,13 +283,17 @@ export class TokenService {
   }
 }
 ```
-<Warning>The `TokenService` above uses an in-memory store, which is **not suitable for production**. Use a persistent store like Redis or a database, and encrypt sensitive tokens.</Warning>
+
+<Warning>
+  The `TokenService` above uses an in-memory store, which is **not suitable for production**. Use a persistent store like Redis or a database, and encrypt sensitive tokens.
+</Warning>
 
 ## Authentication Middleware
 
 This middleware protects routes that require authentication.
 
-**`src/middleware/auth.ts`:**
+**`src/middleware/auth.ts:`**
+
 ```typescript
 import { Request, Response, NextFunction } from 'express';
 import { TokenService } from '../services/TokenService'; // Assuming you have this
@@ -355,13 +362,17 @@ export const requireAuth = async (req: AuthenticatedRequest, res: Response, next
   }
 };
 ```
-<Info>The `requireAuth` middleware is simplified. Production systems often use JWTs or session management. If using JWTs, validate the signature and claims. If session-based, ensure the session is valid. The provided example is more geared towards session-based authentication after the OAuth dance, with a placeholder for separate Bearer token validation for API clients.</Info>
+
+<Info>
+  The `requireAuth` middleware is simplified. Production systems often use JWTs or session management. If using JWTs, validate the signature and claims. If session-based, ensure the session is valid. The provided example is more geared towards session-based authentication after the OAuth dance, with a placeholder for separate Bearer token validation for API clients.
+</Info>
 
 ## Auth Routes
 
 Define routes for login, callback, and logout.
 
-**`src/routes/auth.ts`:**
+**`src/routes/auth.ts:`**
+
 ```typescript
 import { Router, Request, Response } from 'express';
 import { MubarokahOAuthService } from '../services/MubarokahOAuthService';
@@ -374,7 +385,7 @@ const mubarokahConfig: MubarokahConfig = {
   clientId: process.env.MUBAROKAH_CLIENT_ID!,
   clientSecret: process.env.MUBAROKAH_CLIENT_SECRET!,
   redirectUri: process.env.MUBAROKAH_REDIRECT_URI!,
-  baseUrl: process.env.MUBAROKAH_BASE_URL || 'https://mubarokah.id',
+  baseUrl: process.env.MUBAROKAH_BASE_URL || 'https://accounts.mubarokah.com',
 };
 
 if (!mubarokahConfig.clientId || !mubarokahConfig.clientSecret || !mubarokahConfig.redirectUri) {
@@ -509,7 +520,8 @@ export default router;
 
 Integrate the Mubarokah OAuth service and routes into your Express application.
 
-**`src/app.ts` (Simplified):**
+**`src/app.ts (Simplified):`**
+
 ```typescript
 import express from 'express';
 import session from 'express-session'; // npm install express-session @types/express-session
@@ -561,12 +573,14 @@ app.get('/dashboard', (req, res) => {
 
 export default app;
 ```
+
 <Warning>
-**Security Note:**
-- Use a strong, unique `SESSION_SECRET` stored as an environment variable in production.
-- Ensure `secure: true` for cookies in production (requires HTTPS).
-- The example `TokenService` is for demonstration. Use a robust, secure storage solution for tokens in production.
-- Storing raw access tokens in the session might have security implications depending on your session store's security. Consider storing only a session ID and retrieving tokens from a secure backend store when needed.
+  **Security Note:**
+
+  - Use a strong, unique `SESSION_SECRET` stored as an environment variable in production.
+  - Ensure `secure: true` for cookies in production (requires HTTPS).
+  - The example `TokenService` is for demonstration. Use a robust, secure storage solution for tokens in production.
+  - Storing raw access tokens in the session might have security implications depending on your session store's security. Consider storing only a session ID and retrieving tokens from a secure backend store when needed.
 </Warning>
 
 This setup provides a solid foundation for integrating Mubarokah ID OAuth with Node.js, Express, and TypeScript, including session management and basic security considerations. Remember to adapt and enhance the token storage and session management for your production environment.

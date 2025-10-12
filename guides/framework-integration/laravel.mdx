@@ -1,6 +1,6 @@
 ---
-title: Laravel (PHP) Integration
-description: Guide to integrating Mubarokah ID OAuth 2.0 with a Laravel application.
+title: "Laravel (PHP) Integration"
+description: "Guide to integrating Mubarokah ID OAuth 2.0 with a Laravel application."
 ---
 
 # Laravel (PHP) Integration Guide
@@ -9,24 +9,26 @@ This guide provides a production-ready example of how to integrate Mubarokah ID 
 
 ## Prerequisites
 
--   Laravel Framework installed.
--   Composer for package management.
--   Guzzle HTTP Client (or similar): `composer require guzzlehttp/guzzle`
--   Basic understanding of Laravel Service Providers, Controllers, and Eloquent.
+- Laravel Framework installed.
+- Composer for package management.
+- Guzzle HTTP Client (or similar): `composer require guzzlehttp/guzzle`
+- Basic understanding of Laravel Service Providers, Controllers, and Eloquent.
 
 ## Configuration
 
 First, add your Mubarokah ID client credentials and settings to your `config/services.php` file and `.env` file.
 
-**`.env` example:**
+**`.env example:`**
+
 ```env
 MUBAROKAH_CLIENT_ID=your_laravel_client_id
 MUBAROKAH_CLIENT_SECRET=your_laravel_client_secret
 MUBAROKAH_REDIRECT_URI=https://yourlaravelapp.com/auth/mubarokah/callback
-MUBAROKAH_BASE_URL=https://mubarokah.id
+MUBAROKAH_BASE_URL=https://accounts.mubarokah.com
 ```
 
-**`config/services.php`:**
+**`config/services.php:`**
+
 ```php
 <?php
 
@@ -37,7 +39,7 @@ return [
         'client_id' => env('MUBAROKAH_CLIENT_ID'),
         'client_secret' => env('MUBAROKAH_CLIENT_SECRET'),
         'redirect' => env('MUBAROKAH_REDIRECT_URI'),
-        'base_url' => env('MUBAROKAH_BASE_URL', 'https://mubarokah.id'),
+        'base_url' => env('MUBAROKAH_BASE_URL', 'https://accounts.mubarokah.com'),
         'scopes' => ['view-user'], // Default scopes to request
     ],
 ];
@@ -47,7 +49,8 @@ return [
 
 Create a service class to handle the OAuth logic.
 
-**`app/Services/MubarokahOAuthService.php`:**
+**`app/Services/MubarokahOAuthService.php:`**
+
 ```php
 <?php
 
@@ -214,15 +217,17 @@ class MubarokahOAuthService
     }
 }
 ```
+
 <Info>
-Create a custom exception `App\Exceptions\MubarokahOAuthException.php` if you want more specific error handling.
+  Create a custom exception `App\Exceptions\MubarokahOAuthException.php` if you want more specific error handling.
 </Info>
 
 ## Auth Controller
 
 Create a controller to handle the redirect to Mubarokah ID and the callback.
 
-**`app/Http/Controllers/Auth/MubarokahController.php`:**
+**`app/Http/Controllers/Auth/MubarokahController.php:`**
+
 ```php
 <?php
 
@@ -363,10 +368,13 @@ class MubarokahController extends Controller
 Create a model and migration to store Mubarokah ID tokens.
 
 **Migration:**
+
 ```bash
 php artisan make:model MubarokahToken -m
 ```
+
 Modify the generated migration file:
+
 ```php
 <?php
 
@@ -413,9 +421,11 @@ return new class extends Migration
     }
 };
 ```
+
 Run `php artisan migrate`.
 
-**`app/Models/MubarokahToken.php`:**
+**`app/Models/MubarokahToken.php:`**
+
 ```php
 <?php
 
@@ -488,13 +498,17 @@ class MubarokahToken extends Model
     }
 }
 ```
-<Info>Ensure your `APP_KEY` in `.env` is set correctly as it's used for encryption.</Info>
+
+<Info>
+  Ensure your `APP_KEY` in `.env` is set correctly as it's used for encryption.
+</Info>
 
 ## Routes
 
 Add routes for initiating login and handling the callback.
 
-**`routes/web.php`:**
+**`routes/web.php:`**
+
 ```php
 <?php
 
@@ -511,6 +525,7 @@ Route::post('/logout', [MubarokahController::class, 'logout'])->name('logout'); 
 ## Usage Example
 
 Add a "Login with Mubarokah ID" button to your login page:
+
 ```html
 <a href="{{ route('mubarokah.redirect') }}" class="btn btn-primary">
   Login with Mubarokah ID
