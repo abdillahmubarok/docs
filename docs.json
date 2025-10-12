@@ -19,7 +19,7 @@
   },
   "api": {
     "mdx": {
-      "server": "https://mubarokah.id",
+      "server": "https://accounts.mubarokah.com",
       "auth": {
         "method": "bearer"
       }
@@ -41,7 +41,7 @@
     "primary": {
       "type": "button",
       "label": "Dashboard",
-      "href": "https://mubarokah.id/dashboard"
+      "href": "https://accounts.mubarokah.com/dashboard"
     }
   },
   "navigation": {
@@ -199,15 +199,15 @@
         "items": [
           {
             "label": "Documentation",
-            "href": "https://docs.mubarokah.id"
+            "href": "https://accounts.mubarokah.com"
           },
           {
             "label": "API Reference",
-            "href": "https://docs.mubarokah.id/guides/oauth-flow"
+            "href": "https://accounts.mubarokah.com/guides/oauth-flow"
           },
           {
             "label": "Examples",
-            "href": "https://docs.mubarokah.id/guides/framework-integration/laravel"
+            "href": "https://accounts.mubarokah.com/guides/framework-integration/laravel"
           }
         ]
       },
