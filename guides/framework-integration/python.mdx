@@ -63,7 +63,7 @@ class Settings(BaseSettings):
     MUBAROKAH_CLIENT_ID: str
     MUBAROKAH_CLIENT_SECRET: str
     MUBAROKAH_REDIRECT_URI: str
-    MUBAROKAH_BASE_URL: str = "https://mubarokah.id"
+    MUBAROKAH_BASE_URL: str = "https://accounts.mubarokah.com"
     REDIS_URL: str = "redis://localhost:6379/0"
     TOKEN_ENCRYPTION_KEY: str = "your_fernet_encryption_key_here"
     APP_SECRET_KEY: str = "your_strong_application_secret_key"
@@ -83,7 +83,7 @@ settings = get_settings()
 MUBAROKAH_CLIENT_ID="your_fastapi_client_id"
 MUBAROKAH_CLIENT_SECRET="your_fastapi_client_secret"
 MUBAROKAH_REDIRECT_URI="http://localhost:8000/auth/mubarokah/callback"
-MUBAROKAH_BASE_URL="https://mubarokah.id"
+MUBAROKAH_BASE_URL="https://accounts.mubarokah.com"
 REDIS_URL="redis://localhost:6379/0"
 TOKEN_ENCRYPTION_KEY="your_generated_fernet_key"
 APP_SECRET_KEY="a_very_secure_and_random_string_for_sessions"

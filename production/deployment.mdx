@@ -26,7 +26,7 @@ It is **highly recommended** to manage sensitive configuration values using envi
 | `MUBAROKAH_CLIENT_ID`        | `your_production_client_id`                    | Your application's unique Client ID provided by Mubarokah ID for the production environment.                                                |
 | `MUBAROKAH_CLIENT_SECRET`    | `your_strong_production_client_secret`         | Your application's confidential Client Secret for the production environment. **Keep this highly secure.**                                  |
 | `MUBAROKAH_REDIRECT_URI`     | `https://yoursecureapp.com/auth/mubarokah/callback` | The exact, HTTPS-secured URL Mubarokah ID will redirect users back to after authentication. Must be registered with Mubarokah ID.        |
-| `MUBAROKAH_BASE_URL`         | `https://mubarokah.id`                         | The base URL for Mubarokah ID's OAuth and API endpoints.                                                                                    |
+| `MUBAROKAH_BASE_URL`         | `https://accounts.mubarokah.com`                         | The base URL for Mubarokah ID's OAuth and API endpoints.                                                                                    |
 | `APP_ENV` or `NODE_ENV`      | `production`                                   | Sets your application's environment to production mode (often enables optimizations and disables debugging features).                     |
 | `SESSION_SECRET` or `APP_KEY`| `a_very_long_and_random_secure_string`         | A strong, random secret key used for session encryption and signing. Generate a unique one for production.                                |
 | `LOG_LEVEL`                  | `info` or `warn`                               | Controls the verbosity of your application logs. `info` is common for production, `warn` or `error` for less verbosity.                    |
@@ -47,7 +47,7 @@ APP_URL=https://yoursecureapp.com # Your application's main URL
 MUBAROKAH_CLIENT_ID=prod_client_id_from_mubarokah
 MUBAROKAH_CLIENT_SECRET=very_strong_and_secret_production_key
 MUBAROKAH_REDIRECT_URI=https://yoursecureapp.com/auth/mubarokah/callback
-MUBAROKAH_BASE_URL=https://mubarokah.id
+MUBAROKAH_BASE_URL=https://accounts.mubarokah.com
 
 # Database (Example)
 DB_CONNECTION=mysql

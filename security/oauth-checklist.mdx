@@ -28,7 +28,7 @@ These practices ensure the authentication process itself is secure.
     // 1. Generate and store state before redirecting
     // const state = crypto.randomBytes(16).toString('hex'); // Node.js example
     // req.session.oauthState = state; // Store in session
-    // const authUrl = `https://mubarokah.id/oauth/authorize?response_type=code&client_id=...&state=\${state}...`;
+    // const authUrl = `https://accounts.mubarokah.com/oauth/authorize?response_type=code&client_id=...&state=\${state}...`;
 
     // 2. Verify state on callback
     // const callbackState = req.query.state;

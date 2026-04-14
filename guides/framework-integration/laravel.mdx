@@ -23,7 +23,7 @@ First, add your Mubarokah ID client credentials and settings to your `config/ser
 MUBAROKAH_CLIENT_ID=your_laravel_client_id
 MUBAROKAH_CLIENT_SECRET=your_laravel_client_secret
 MUBAROKAH_REDIRECT_URI=https://yourlaravelapp.com/auth/mubarokah/callback
-MUBAROKAH_BASE_URL=https://mubarokah.id
+MUBAROKAH_BASE_URL=https://accounts.mubarokah.com
 ```
 
 **`config/services.php`:**
@@ -37,7 +37,7 @@ return [
         'client_id' => env('MUBAROKAH_CLIENT_ID'),
         'client_secret' => env('MUBAROKAH_CLIENT_SECRET'),
         'redirect' => env('MUBAROKAH_REDIRECT_URI'),
-        'base_url' => env('MUBAROKAH_BASE_URL', 'https://mubarokah.id'),
+        'base_url' => env('MUBAROKAH_BASE_URL', 'https://accounts.mubarokah.com'),
         'scopes' => ['view-user'], // Default scopes to request
     ],
 ];
@@ -291,17 +291,26 @@ class MubarokahController extends Controller
             $tokens = $this->oauthService->exchangeCodeForTokens($code, $codeVerifier);
             $mubarokahUser = $this->oauthService->getUserInfo($tokens['access_token']);
 
-            // Find or create user in your local database
-            $user = User::updateOrCreate(
-                ['email' => $mubarokahUser['email']],
-                [
-                    'name' => $mubarokahUser['name'],
-                    'mubarokah_id' => $mubarokahUser['id'], // Add this column to your users table
-                    'avatar' => $mubarokahUser['profile_picture'] ?? null, // Add this column
-                    'username' => $mubarokahUser['username'] ?? $mubarokahUser['email'], // Add this column
-                    // 'password' => Hash::make(Str::random(16)) // If password is required
-                ]
-            );
+            // Best Practice: Use mubarokah_id as the primary lookup key
+            // because 'email' can be null for WhatsApp-registered users.
+            $user = User::where('mubarokah_id', $mubarokahUser['id'])->first();
+
+            if (!$user && isset($mubarokahUser['email'])) {
+                // Fallback lookup by email if mubarokah_id is not yet set
+                $user = User::where('email', $mubarokahUser['email'])->first();
+            }
+
+            if (!$user) {
+                $user = new User();
+                $user->mubarokah_id = $mubarokahUser['id'];
+            }
+
+            // Sync user data
+            $user->name = $mubarokahUser['name'];
+            $user->email = $mubarokahUser['email'] ?? ($mubarokahUser['id'] . '@mubarokah.id'); // Fallback email
+            $user->username = $mubarokahUser['username'] ?? $user->email;
+            $user->avatar = $mubarokahUser['profile_picture'] ?? null;
+            $user->save();
 
             // Store tokens securely (e.g., in a separate table, encrypted)
             MubarokahToken::updateOrCreate(

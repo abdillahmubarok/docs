@@ -58,7 +58,7 @@ export interface MubarokahConfig {
   clientId: string;
   clientSecret: string;
   redirectUri: string;
-  baseUrl: string; // e.g., https://mubarokah.id
+  baseUrl: string; // e.g., https://accounts.mubarokah.com
 }
 
 export interface TokenResponse {
@@ -374,7 +374,7 @@ const mubarokahConfig: MubarokahConfig = {
   clientId: process.env.MUBAROKAH_CLIENT_ID!,
   clientSecret: process.env.MUBAROKAH_CLIENT_SECRET!,
   redirectUri: process.env.MUBAROKAH_REDIRECT_URI!,
-  baseUrl: process.env.MUBAROKAH_BASE_URL || 'https://mubarokah.id',
+  baseUrl: process.env.MUBAROKAH_BASE_URL || 'https://accounts.mubarokah.com',
 };
 
 if (!mubarokahConfig.clientId || !mubarokahConfig.clientSecret || !mubarokahConfig.redirectUri) {

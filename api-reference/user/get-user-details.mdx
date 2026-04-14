@@ -34,7 +34,7 @@ This endpoint retrieves more sensitive and detailed profile information for the 
 ```javascript
 const getUserDetails = async (accessToken) => {
   try {
-    const response = await fetch('https://mubarokah.id/api/user/details', {
+    const response = await fetch('https://accounts.mubarokah.com/api/user/details', {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${accessToken}`,
@@ -68,7 +68,7 @@ const getUserDetails = async (accessToken) => {
 const getCompleteUserProfile = async (accessToken) => {
   try {
     // Always get basic info first
-    const basicInfo = await fetch('https://mubarokah.id/api/user', {
+    const basicInfo = await fetch('https://accounts.mubarokah.com/api/user', {
       headers: {
         'Authorization': `Bearer ${accessToken}`,
         'Accept': 'application/json'
@@ -119,7 +119,7 @@ import json
 
 def get_user_details(access_token):
     """Fetch detailed user information from Mubarokah ID API."""
-    url = 'https://mubarokah.id/api/user/details'
+    url = 'https://accounts.mubarokah.com/api/user/details'
     headers = {
         'Authorization': f'Bearer {access_token}',
         'Accept': 'application/json'
@@ -149,7 +149,7 @@ def get_user_details(access_token):
 def get_complete_user_profile(access_token):
     """Get complete user profile with fallback to basic info."""
     # Get basic info first
-    basic_url = 'https://mubarokah.id/api/user'
+    basic_url = 'https://accounts.mubarokah.com/api/user'
     headers = {
         'Authorization': f'Bearer {access_token}',
         'Accept': 'application/json'
@@ -191,7 +191,7 @@ except Exception as error:
 <?php
 
 function getUserDetails($accessToken) {
-    $url = 'https://mubarokah.id/api/user/details';
+    $url = 'https://accounts.mubarokah.com/api/user/details';
     
     $options = [
         'http' => [
@@ -233,7 +233,7 @@ function getUserDetails($accessToken) {
 
 function getCompleteUserProfile($accessToken) {
     // Get basic info first
-    $basicUrl = 'https://mubarokah.id/api/user';
+    $basicUrl = 'https://accounts.mubarokah.com/api/user';
     $options = [
         'http' => [
             'header' => [
@@ -289,12 +289,12 @@ try {
 ### cURL
 ```bash
 # Basic request
-curl -X GET "https://mubarokah.id/api/user/details" \
+curl -X GET "https://accounts.mubarokah.com/api/user/details" \
   -H "Authorization: Bearer YOUR_APPROVED_ACCESS_TOKEN" \
   -H "Accept: application/json"
 
 # With comprehensive error handling
-curl -X GET "https://mubarokah.id/api/user/details" \
+curl -X GET "https://accounts.mubarokah.com/api/user/details" \
   -H "Authorization: Bearer YOUR_APPROVED_ACCESS_TOKEN" \
   -H "Accept: application/json" \
   -w "HTTP Status: %{http_code}\n" \
@@ -305,12 +305,12 @@ curl -X GET "https://mubarokah.id/api/user/details" \
 TOKEN="your_access_token_here"
 
 echo "Testing basic user info..."
-curl -s -X GET "https://mubarokah.id/api/user" \
+curl -s -X GET "https://accounts.mubarokah.com/api/user" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Accept: application/json" | jq '.'
 
 echo -e "\nTesting detailed user info..."
-curl -s -X GET "https://mubarokah.id/api/user/details" \
+curl -s -X GET "https://accounts.mubarokah.com/api/user/details" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Accept: application/json" | jq '.'
 ```
@@ -324,7 +324,7 @@ A successful request returns a JSON object containing the user's detailed profil
   A short biography or description from the user. May be `null`.
 </ResponseField>
 <ResponseField name="phone_number" type="string">
-  The user's verified phone number. May be `null`.
+  The user's verified phone number. This is the primary identifier for WhatsApp-registered users. May be `null` if not provided.
 </ResponseField>
 <ResponseField name="place_of_birth" type="string">
   The user's place of birth. May be `null`.
@@ -337,7 +337,7 @@ A successful request returns a JSON object containing the user's detailed profil
 </ResponseField>
 
 <Info>
-The availability of these fields depends on what information the user has provided to Mubarokah ID and the specific permissions granted. Some fields might be `null`.
+The availability of these fields depends on what information the user has provided to Mubarokah ID and the specific permissions granted. For WhatsApp-only registration, `email` in basic info will be `null`, while `phone_number` here will be populated.
 </Info>
 
 ## Example Successful Response
@@ -347,7 +347,7 @@ The availability of these fields depends on what information the user has provid
   "id": 12345,
   "name": "Ahmad Mubarak",
   "email": "ahmad.mubarak@example.com",
-  "profile_picture": "https://mubarokah.id/storage/avatars/12345.jpg",
+  "profile_picture": "https://accounts.mubarokah.com/storage/avatars/12345.jpg",
   "username": "ahmadmubarak",
   "gender": "male",
   "bio": "Software engineer passionate about OAuth 2.0 and building great APIs for the Indonesian tech ecosystem.",
@@ -448,7 +448,7 @@ Before testing this endpoint, ensure:
   <Step title="Scope Request">
     Your OAuth authorization URL includes `detail-user` in the scope parameter:
     ```javascript
-    const authURL = `https://mubarokah.id/oauth/authorize?` +
+    const authURL = `https://accounts.mubarokah.com/oauth/authorize?` +
       `response_type=code&` +
       `client_id=${CLIENT_ID}&` +
       `scope=view-user detail-user&` +

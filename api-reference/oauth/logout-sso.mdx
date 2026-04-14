@@ -1,0 +1,81 @@
+---
+title: Global SSO Logout
+description: API reference for the Mubarokah ID Global SSO Logout endpoint (/api/logout-sso).
+api: 'GET /api/logout-sso'
+authMethod: 'bearer'
+---
+
+# Global SSO Logout
+
+The Global SSO Logout endpoint allows a client application to terminate the user's entire Single Sign-On session across the Mubarokah ID ecosystem. 
+
+Unlike a local logout (which only clears the session in your application), this endpoint:
+1. Revokes the provided Access Token.
+2. Characteristically terminates the central web session at `mubarokah.id`.
+3. Ensures that the user is logged out from all other applications connected via Mubarokah ID SSO.
+
+## Authorization
+<ParamField header="Authorization" type="string" required={true}>
+  The Bearer token of the current active session. Example: `Bearer {YOUR_ACCESS_TOKEN}`
+</ParamField>
+
+## Best Practices & Developer Advice
+
+<Warning>
+**Single Sign-Out Awareness**  
+Calling this API will log the user out from **ALL** Mubarokah ID affiliated applications (e.g., Dashboard, other client apps). 
+
+**Recommendation**: 
+Before calling this endpoint, show a confirmation dialog to the user:  
+*"Are you sure you want to log out? This will also end your session in other Mubarokah ID applications."*
+</Warning>
+
+### Implementation Tips
+
+1. **Sequential Logout**: First, call this API to terminate the global session. Then, clear your local application session (cookies, localStorage, or server-side session).
+2. **Error Handling**: If the API call fails (e.g., due to network issues), you should still proceed with clearing the local session as a fallback.
+3. **Use the SDK**: If you are using our [React SDK](/guides/framework-integration/react), the `logout()` function already handles this logic securely.
+
+## Request Examples
+
+### JavaScript (fetch)
+```javascript
+const globalLogout = async (accessToken) => {
+  try {
+    await fetch('https://accounts.mubarokah.com/api/logout-sso', {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Accept': 'application/json'
+      }
+    });
+    
+    // Clear local session after global logout success/attempt
+    localStorage.removeItem('your_app_token');
+    window.location.href = '/login';
+  } catch (error) {
+    console.error('Logout failed:', error);
+  }
+};
+```
+
+## Responses
+
+<ResponseField name="message" type="string">
+  Confirmation message of successful logout.
+</ResponseField>
+
+### Success Response (200 OK)
+```json
+{
+  "message": "Successfully logged out from SSO session"
+}
+```
+
+### Error Response (401 Unauthorized)
+Returned if the token is invalid or already revoked.
+```json
+{
+  "message": "Unauthenticated."
+}
+```

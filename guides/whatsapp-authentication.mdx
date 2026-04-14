@@ -1,0 +1,70 @@
+---
+title: WhatsApp Authentication Flow
+description: Learn how to handle users who register and authenticate using WhatsApp instead of Email.
+---
+
+# WhatsApp Authentication Flow
+
+Mubarokah ID allows users to register and sign in using their WhatsApp number. This provides a fast, frictionless experience, but it introduces a key difference for developers: **the absence of a verified email address**.
+
+## Key Differences
+
+| Feature | Email Registration | WhatsApp Registration |
+| :--- | :--- | :--- |
+| **Identifier** | Email Address | Phone Number |
+| **Verification** | Email Link / OTP | WhatsApp OTP |
+| **User Info Response** | `email` is populated | `email` is `null` |
+| **Primary Key** | `id` (numeric) | `id` (numeric) |
+
+## Handling WhatsApp Users
+
+When a user authenticates via WhatsApp, the `/api/user` endpoint will return a response where the `email` field is `null`.
+
+### Example User Response (WhatsApp User)
+
+```json
+{
+  "id": 88123,
+  "name": "Budi Santoso",
+  "email": null,
+  "username": "budi_88123",
+  "profile_picture": null,
+  "gender": "male"
+}
+```
+
+### Best Practices for Client Apps
+
+#### 1. Use `mubarokah_id` as Primary Key
+Do not use `email` as the unique identifier in your application's `users` table. Instead, map your local users to the Mubarokah ID unique identifier.
+
+```php
+// Bad: Lookup by email
+$user = User::where('email', $mubarokahUser['email'])->first();
+
+// Good: Lookup by Mubarokah ID
+$user = User::where('mubarokah_id', $mubarokahUser['id'])->first();
+```
+
+#### 2. Implement Fallback Emails
+If your application logic strictly requires an email address (e.g., for sending notifications), you can generate a synthetic internal email as a fallback until the user provides a real one.
+
+```javascript
+const userEmail = mubarokahUser.email || `${mubarokahUser.id}@sso.mubarokah.local`;
+```
+
+#### 3. Support Profile Completion
+If your app needs a real email for business reasons, detect the `null` email in your dashboard and prompt the user to:
+1. "Link your Email Address to receive order updates."
+2. Redirect them to the Mubarokah ID Profile page to add their email.
+
+## SDK Support
+
+Our official [React SDK](/guides/framework-integration/react) and [Laravel Integration](/guides/framework-integration/laravel) have been updated to handle these flows seamlessly.
+
+- The **React SDK** provides `isAuthenticated` and `user` state regardless of whether an email exists.
+- The **Laravel Guide** now shows how to use `mubarokah_id` for resilient user synchronization.
+
+<Info>
+**Note on Security**: Phone numbers are verified via WhatsApp OTP before being returned to your application, ensuring they are as trustworthy as verified email addresses.
+</Info>

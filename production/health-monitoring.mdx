@@ -88,7 +88,7 @@ class HealthController extends Controller
             // or check against a known Mubarokah ID status endpoint.
             // For example, trying to resolve DNS or a HEAD request to base URL.
             $client = new \GuzzleHttp\Client(['timeout' => 5]);
-            $response = $client->head(config('services.mubarokah.base_url', 'https://mubarokah.id'));
+            $response = $client->head(config('services.mubarokah.base_url', 'https://accounts.mubarokah.com'));
             if ($response->getStatusCode() >= 200 && $response->getStatusCode() < 400) {
                 return ['status' => 'ok'];
             }

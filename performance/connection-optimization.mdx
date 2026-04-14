@@ -46,7 +46,7 @@ const httpsAgent = new https.Agent({
 // If using axios, you can pass these agents during instance creation
 import axios from 'axios';
 const apiClient = axios.create({
-  baseURL: 'https://mubarokah.id',
+  baseURL: 'https://accounts.mubarokah.com',
   httpAgent: httpAgent, // For http requests
   httpsAgent: httpsAgent // For https requests
 });
@@ -107,8 +107,8 @@ class OptimizedOAuthClient {
 }
 
 const client = new OptimizedOAuthClient();
-client.makeRequest('GET', 'https://mubarokah.id/api/user', { id: 123 });
-client.makeRequest('GET', 'https://mubarokah.id/api/user', { id: 123 }); // This one would be deduplicated
+client.makeRequest('GET', 'https://accounts.mubarokah.com/api/user', { id: 123 });
+client.makeRequest('GET', 'https://accounts.mubarokah.com/api/user', { id: 123 }); // This one would be deduplicated
 ```
 
 ## Timeouts and Retries
@@ -130,7 +130,7 @@ async function exchangeCodeForTokensWithRetry(code, redirectUri, attempt = 1) {
   const INITIAL_BACKOFF_MS = 1000;
 
   try {
-    // const response = await httpClient.post('https://mubarokah.id/oauth/token', { ... });
+    // const response = await httpClient.post('https://accounts.mubarokah.com/oauth/token', { ... });
     // return response.data;
     throw new Error("Simulated network error"); // For example
   } catch (error) {

@@ -24,13 +24,13 @@ These are templates. Adapt them with specific commands, contact points, and tool
 1.  **Verify Mubarokah ID Service Status:**
     -   Check if Mubarokah ID has a publicly available status page.
     -   Attempt to access a known Mubarokah ID endpoint (e.g., their main website or a status API if available) from a neutral network to check for general availability.
-    -   **Command (example):** `curl -I https://mubarokah.id/oauth/authorize` (or a known health/status endpoint). Look for HTTP 200 or 302 (for authorize).
+    -   **Command (example):** `curl -I https://accounts.mubarokah.com/oauth/authorize` (or a known health/status endpoint). Look for HTTP 200 or 302 (for authorize).
 
 2.  **Check Your Application's Connectivity to Mubarokah ID:**
-    -   From your application server(s), test connectivity to `https://mubarokah.id` (or the specific OAuth/API base URL).
+    -   From your application server(s), test connectivity to `https://accounts.mubarokah.com` (or the specific OAuth/API base URL).
     -   **Commands (examples):**
         -   `ping mubarokah.id` (if ICMP is allowed)
-        -   `curl -v https://mubarokah.id/oauth/token` (observe TLS handshake and connection attempt)
+        -   `curl -v https://accounts.mubarokah.com/oauth/token` (observe TLS handshake and connection attempt)
         -   `openssl s_client -connect mubarokah.id:443`
 
 3.  **Review Your Application's Critical Logs:**
@@ -51,7 +51,7 @@ These are templates. Adapt them with specific commands, contact points, and tool
     -   If you have a separate, known-good test client configuration for Mubarokah ID, try the flow with that to see if the issue is specific to your main production client credentials.
     -   **Command (conceptual, using Postman or cURL for token endpoint):**
         ```bash
-        # curl -X POST https://mubarokah.id/oauth/token \
+        # curl -X POST https://accounts.mubarokah.com/oauth/token \
         #  -H "Content-Type: application/x-www-form-urlencoded" \
         #  -d "grant_type=client_credentials&client_id=TEST_CLIENT_ID&client_secret=TEST_CLIENT_SECRET"
         ```
@@ -115,7 +115,7 @@ Contact: [Lead Engineer / On-call Person]
     -   **Mubarokah ID API Performance:** Check if Mubarokah ID has announced any performance degradations.
     -   **Command (example for checking response times):**
         ```bash
-        # curl -w "Connect: %{time_connect}s | TTFB: %{time_starttransfer}s | Total: %{time_total}s\n" -s -o /dev/null https://mubarokah.id/api/user -H "Authorization: Bearer DUMMY_TOKEN_FOR_TIMING_TEST_ONLY"
+        # curl -w "Connect: %{time_connect}s | TTFB: %{time_starttransfer}s | Total: %{time_total}s\n" -s -o /dev/null https://accounts.mubarokah.com/api/user -H "Authorization: Bearer DUMMY_TOKEN_FOR_TIMING_TEST_ONLY"
         ```
         (Replace DUMMY_TOKEN with a test token if needed, or test a public endpoint if one exists).
 3.  **Specific 4xx Errors (e.g., `invalid_request`, `invalid_scope`):**

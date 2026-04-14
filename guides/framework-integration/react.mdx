@@ -1,0 +1,121 @@
+---
+title: React Integration
+description: Guide to integrating Mubarokah ID with a React application using the official SDK.
+---
+
+# React Integration Guide
+
+This guide explains how to integrate Mubarokah ID Single Sign-On into your React application using our official TypeScript SDK. The SDK provides a native React Context and Hooks designed for Single Page Applications (SPA), handles PKCE (Proof Key for Code Exchange) automatically, and manages session state.
+
+## Installation
+
+Install the official SDK via npm:
+
+```bash
+npm install mubarokah-id-sdk
+```
+
+## Setup
+
+Wrap your root application component with the `MubarokahProvider`. This provider initializes the authentication state and provides it to your entire component tree.
+
+### 1. Configure the Provider
+
+In your `main.tsx` or `App.tsx`:
+
+```tsx
+import React from 'react';
+import { MubarokahProvider } from 'mubarokah-id-sdk/react';
+
+const config = {
+  clientId: 'your-client-id',
+  // clientSecret is NOT required for React apps (Public Client)
+  redirectUri: 'http://localhost:3000/callback',
+  baseUrl: 'https://accounts.mubarokah.com', // Optional: defaults to production
+};
+
+function App() {
+  return (
+    <MubarokahProvider config={config}>
+      <YourAppContent />
+    </MubarokahProvider>
+  );
+}
+```
+
+### 2. Using the Hooks
+
+The `useMubarokahAuth` hook gives you access to the user's authentication state and methods to log in or out.
+
+```tsx
+import { useMubarokahAuth } from 'mubarokah-id-sdk/react';
+
+function UserProfile() {
+  const { 
+    isAuthenticated, 
+    user, 
+    isLoading, 
+    loginWithRedirect, 
+    logout 
+  } = useMubarokahAuth();
+
+  if (isLoading) return <div>Loading authentication state...</div>;
+
+  if (isAuthenticated) {
+    return (
+      <div className="profile-card">
+        <img src={user?.profile_picture} alt={user?.name} />
+        <h2>Welcome, {user?.name}!</h2>
+        <p>Email: {user?.email || 'Not provided (WhatsApp login)'}</p>
+        <button onClick={() => logout()}>Log Out</button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="login-container">
+      <h1>Please Sign In</h1>
+      <button onClick={() => loginWithRedirect()}>
+        Login with Mubarokah ID
+      </button>
+    </div>
+  );
+}
+```
+
+## Handling the Callback
+
+When the user approves the authentication request on Mubarokah ID, they are redirected back to your `redirectUri`. The SDK automatically detects the `code` and `state` parameters in the URL and completes the login flow.
+
+You don't need to create a dedicated callback route unless you want custom logic; the `MubarokahProvider` handles this logic as soon as it mounts.
+
+## WhatsApp User Support
+
+As mentioned in our [WhatsApp Authentication Guide](../whatsapp-authentication), users who register via WhatsApp will not have an email address. 
+
+The SDK handles this gracefully:
+- `user.email` will be `null`.
+- `user.id` remains the unique, stable identifier for the user.
+
+<Tip>
+**Pro Tip**: Use the `user?.id` to map data in your frontend or backend rather than the email address.
+</Tip>
+
+## Security Warning: Global Logout
+
+<Warning>
+**Single Sign-Out Awareness**  
+Calling `logout()` via the React Hook will terminate the user's central session on the Mubarokah ID server. This means they will be logged out from **all** other Mubarokah ID apps too.
+
+It is recommended to show a confirmation dialog before calling `logout()`.
+</Warning>
+
+### Example with Confirmation:
+
+```tsx
+const handleLogout = () => {
+  if (window.confirm("Are you sure? This will log you out from all Mubarokah ID apps.")) {
+    logout();
+  }
+};
+```

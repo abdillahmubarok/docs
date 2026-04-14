@@ -28,6 +28,9 @@ This endpoint initiates the OAuth 2.0 authorization process. Your application re
 <ParamField path="query prompt" type="string">
   Optional. Valid values include: <br/> - `consent`: Forces the consent screen to be shown even if the user has previously authorized your application for the requested scopes. <br/> - `login`: Forces the user to re-authenticate even if they have an active session.
 </ParamField>
+<ParamField path="query skip_account_chooser" type="string">
+  Optional. Set to `true` to bypass the account chooser screen if the user has already authorized your application with their current account. This is useful for providing a seamless experience when re-authorizing or performing silent authentication.
+</ParamField>
 <ParamField path="query code_challenge" type="string">
   Used for [PKCE (Proof Key for Code Exchange)](../../guides/oauth-flow#pkce-proof-key-for-code-exchange). The Base64 URL-encoded SHA256 hash of the `code_verifier`. Required for public clients (e.g., mobile apps, SPAs) that cannot securely store a client secret.
 </ParamField>
@@ -82,7 +85,7 @@ const params = new URLSearchParams({
   // code_challenge_method: 'S256' // Uncomment for PKCE
 });
 
-const authorizationUrl = \`https://mubarokah.id/oauth/authorize?\${params.toString()}\`;
+const authorizationUrl = \`https://accounts.mubarokah.com/oauth/authorize?\${params.toString()}\`;
 
 // Redirect the user's browser to this URL
 // window.location.href = authorizationUrl;

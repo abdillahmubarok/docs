@@ -19,7 +19,7 @@
   },
   "api": {
     "mdx": {
-      "server": "https://mubarokah.id",
+      "server": "https://accounts.mubarokah.com",
       "auth": {
         "method": "bearer"
       }
@@ -41,7 +41,7 @@
     "primary": {
       "type": "button",
       "label": "Dashboard",
-      "href": "https://mubarokah.id/dashboard"
+      "href": "https://accounts.mubarokah.com/dashboard"
     }
   },
   "navigation": {
@@ -88,10 +88,12 @@
             "group": "Integration Guides",
             "pages": [
               "guides/oauth-flow",
+              "guides/whatsapp-authentication",
               {
                 "group": "Framework Examples",
                 "pages": [
                   "guides/framework-integration/laravel",
+                  "guides/framework-integration/react",
                   "guides/framework-integration/nodejs",
                   "guides/framework-integration/python"
                 ]
@@ -102,7 +104,8 @@
             "group": "OAuth Endpoints",
             "pages": [
               "api-reference/oauth/authorize",
-              "api-reference/oauth/token"
+              "api-reference/oauth/token",
+              "api-reference/oauth/logout-sso"
             ]
           },
           {

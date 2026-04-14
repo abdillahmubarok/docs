@@ -60,7 +60,7 @@ Set up your environment variables:
 MUBAROKAH_CLIENT_ID=your_client_id_here
 MUBAROKAH_CLIENT_SECRET=your_client_secret_here
 MUBAROKAH_REDIRECT_URI=https://yourapp.com/auth/callback
-MUBAROKAH_BASE_URL=https://mubarokah.id
+MUBAROKAH_BASE_URL=https://accounts.mubarokah.com
 ```
 
 ## Step 4: Implement the OAuth Flow
@@ -71,7 +71,7 @@ Redirect users to Mubarokah ID for authentication:
 
 <CodeGroup>
   ```javascript JavaScript
-  const authUrl = new URL('https://mubarokah.id/oauth/authorize');
+  const authUrl = new URL('https://accounts.mubarokah.com/oauth/authorize');
   authUrl.searchParams.set('response_type', 'code');
   authUrl.searchParams.set('client_id', process.env.MUBAROKAH_CLIENT_ID);
   authUrl.searchParams.set('redirect_uri', process.env.MUBAROKAH_REDIRECT_URI);
@@ -91,7 +91,7 @@ Redirect users to Mubarokah ID for authentication:
       'state' => $this->generateSecureState()
   ];
 
-  $authUrl = 'https://mubarokah.id/oauth/authorize?' . http_build_query($params);
+  $authUrl = 'https://accounts.mubarokah.com/oauth/authorize?' . http_build_query($params);
   return redirect($authUrl);
   ```
 
@@ -106,7 +106,7 @@ Redirect users to Mubarokah ID for authentication:
       'state': generate_secure_state()
   }
 
-  auth_url = f"https://mubarokah.id/oauth/authorize?{urlencode(params)}"
+  auth_url = f"https://accounts.mubarokah.com/oauth/authorize?{urlencode(params)}"
   return RedirectResponse(url=auth_url)
   ```
 </CodeGroup>
@@ -127,7 +127,7 @@ Exchange the authorization code for tokens:
 
     try {
       // Exchange code for tokens
-      const tokenResponse = await axios.post('https://mubarokah.id/oauth/token', {
+      const tokenResponse = await axios.post('https://accounts.mubarokah.com/oauth/token', {
         grant_type: 'authorization_code',
         client_id: process.env.MUBAROKAH_CLIENT_ID,
         client_secret: process.env.MUBAROKAH_CLIENT_SECRET,
@@ -138,7 +138,7 @@ Exchange the authorization code for tokens:
       const { access_token } = tokenResponse.data;
       
       // Get user info
-      const userResponse = await axios.get('https://mubarokah.id/api/user', {
+      const userResponse = await axios.get('https://accounts.mubarokah.com/api/user', {
         headers: { Authorization: `Bearer ${access_token}` }
       });
 
@@ -164,7 +164,7 @@ Exchange the authorization code for tokens:
 
       try {
           // Exchange code for tokens
-          $response = Http::post('https://mubarokah.id/oauth/token', [
+          $response = Http::post('https://accounts.mubarokah.com/oauth/token', [
               'grant_type' => 'authorization_code',
               'client_id' => env('MUBAROKAH_CLIENT_ID'),
               'client_secret' => env('MUBAROKAH_CLIENT_SECRET'),
@@ -176,7 +176,7 @@ Exchange the authorization code for tokens:
 
           // Get user info
           $userResponse = Http::withToken($accessToken)
-              ->get('https://mubarokah.id/api/user');
+              ->get('https://accounts.mubarokah.com/api/user');
 
           // Handle successful login
           session(['user' => $userResponse->json()]);
@@ -202,7 +202,7 @@ Exchange the authorization code for tokens:
           # Exchange code for tokens
           async with httpx.AsyncClient() as client:
               token_response = await client.post(
-                  "https://mubarokah.id/oauth/token",
+                  "https://accounts.mubarokah.com/oauth/token",
                   data={
                       "grant_type": "authorization_code",
                       "client_id": settings.MUBAROKAH_CLIENT_ID,
@@ -217,7 +217,7 @@ Exchange the authorization code for tokens:
               
               # Get user info
               user_response = await client.get(
-                  "https://mubarokah.id/api/user",
+                  "https://accounts.mubarokah.com/api/user",
                   headers={"Authorization": f"Bearer {access_token}"}
               )
               
