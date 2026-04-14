@@ -1,6 +1,6 @@
 ---
-title: OAuth 2.0 Flows
-description: Detailed explanation of the OAuth 2.0 Authorization Code Grant and Refresh Token flows used by Mubarokah ID.
+title: "OAuth 2.0 Flows"
+description: "Detailed explanation of the OAuth 2.0 Authorization Code Grant and Refresh Token flows used by Mubarokah ID."
 ---
 
 # OAuth 2.0 Flows
@@ -64,23 +64,24 @@ Your application initiates the flow by redirecting the user's browser to Mubarok
 
 ```http
 GET /oauth/authorize HTTP/1.1
-Host: mubarokah.id
+Host: accounts.mubarokah.com
 ```
 
 **Parameters:**
 
-| Parameter             | Type   | Required | Description                                                                 |
-|-----------------------|--------|----------|-----------------------------------------------------------------------------|
-| `response_type`       | string | ✅        | Must be `code`.                                                             |
-| `client_id`           | string | ✅        | Your application's unique Client ID.                                          |
-| `redirect_uri`        | string | ✅        | The URL Mubarokah ID will redirect the user back to. Must match a registered URI. |
-| `scope`               | string | ❌        | Space-separated list of permissions (e.g., `view-user detail-user`).        |
-| `state`               | string | 🔸        | An opaque value used to prevent CSRF attacks. Highly recommended.           |
-| `prompt`              | string | ❌        | Optional. Set to `consent` to force the consent screen even if already approved. |
-| `code_challenge`      | string | ❌        | PKCE: The code challenge derived from the `code_verifier`. (Public clients)   |
-| `code_challenge_method`| string | ❌        | PKCE: Usually `S256`. (Public clients)                                       |
+| Parameter               | Type   | Required | Description                                                                       |
+| ----------------------- | ------ | -------- | --------------------------------------------------------------------------------- |
+| `response_type`         | string | ✅        | Must be `code`.                                                                   |
+| `client_id`             | string | ✅        | Your application's unique Client ID.                                              |
+| `redirect_uri`          | string | ✅        | The URL Mubarokah ID will redirect the user back to. Must match a registered URI. |
+| `scope`                 | string | ❌        | Space-separated list of permissions (e.g., `view-user detail-user`).              |
+| `state`                 | string | 🔸       | An opaque value used to prevent CSRF attacks. Highly recommended.                 |
+| `prompt`                | string | ❌        | Optional. Set to `consent` to force the consent screen even if already approved.  |
+| `code_challenge`        | string | ❌        | PKCE: The code challenge derived from the `code_verifier`. (Public clients)       |
+| `code_challenge_method` | string | ❌        | PKCE: Usually `S256`. (Public clients)                                            |
 
 **Example Redirect URL Construction (JavaScript):**
+
 ```javascript
 function generateRandomString(length = 40) {
   const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~';
@@ -117,8 +118,8 @@ window.location.href = authorizationUrl;
 
 #### Step 2: User Authentication & Consent
 
--   The user is prompted to log in to Mubarokah ID (if not already).
--   After successful login, Mubarokah ID displays a consent screen where the user can approve or deny the permissions (scopes) your application is requesting.
+- The user is prompted to log in to Mubarokah ID (if not already).
+- After successful login, Mubarokah ID displays a consent screen where the user can approve or deny the permissions (scopes) your application is requesting.
 
 ```mermaid
 flowchart TD
@@ -134,7 +135,6 @@ flowchart TD
 
     G --> I[Redirect to App's redirect_uri with 'code' and 'state']
     H --> J[Redirect to App's redirect_uri with 'error=access_denied']
-
 ```
 
 #### Step 3: Authorization Code Response (Redirection to Your App)
@@ -142,43 +142,49 @@ flowchart TD
 If the user grants consent, Mubarokah ID redirects the user back to your application's `redirect_uri` with an `authorization_code` and the `state` parameter.
 
 **Example Success Redirect:**
+
 ```text
 https://yourapp.com/callback?code=AUTHORIZATION_CODE_HERE&state=YOUR_ORIGINAL_STATE
 ```
-<Info>Your application should first verify that the received `state` matches the one generated in Step 1 to prevent CSRF attacks.</Info>
 
-**Example Error Redirect:**
-If the user denies access or an error occurs:
+<Info>
+  Your application should first verify that the received `state` matches the one generated in Step 1 to prevent CSRF attacks.
+</Info>
+
+**Example Error Redirect:** If the user denies access or an error occurs:
+
 ```text
 https://yourapp.com/callback?error=access_denied&error_description=The+user+denied+access+to+your+application.&state=YOUR_ORIGINAL_STATE
 ```
 
 #### Step 4: Token Exchange (Server-to-Server)
 
-<Warning>This step **must** be performed on your application's backend server, as it requires your `client_secret`.</Warning>
+<Warning>
+  This step **must** be performed on your application's backend server, as it requires your `client_secret`.
+</Warning>
 
 Your application exchanges the `authorization_code` for an `access_token` and a `refresh_token` by making a POST request to Mubarokah ID's token endpoint.
 
 ```http
 POST /oauth/token HTTP/1.1
-Host: mubarokah.id
+Host: accounts.mubarokah.com
 Content-Type: application/x-www-form-urlencoded
 Authorization: Basic base64(client_id:client_secret) // Only if not sending client_id/secret in body
 ```
 
-**Request Body Parameters (`application/x-www-form-urlencoded`):**
+**`Request Body Parameters (application/x-www-form-urlencoded):`**
 
-| Parameter        | Type   | Required | Description                                                                     |
-|------------------|--------|----------|---------------------------------------------------------------------------------|
-| `grant_type`     | string | ✅        | Must be `authorization_code`.                                                   |
-| `code`           | string | ✅        | The authorization code received in Step 3.                                      |
-| `redirect_uri`   | string | ✅        | The same `redirect_uri` used in Step 1.                                         |
-| `client_id`      | string | ✅        | Your application's Client ID. (Required if not using Basic Auth header)           |
-| `client_secret`  | string | ✅        | Your application's Client Secret. (Required if not using Basic Auth header)       |
-| `code_verifier`  | string | ❌        | PKCE: The original `code_verifier` if `code_challenge` was used. (Public clients) |
-
+| Parameter       | Type   | Required | Description                                                                       |
+| --------------- | ------ | -------- | --------------------------------------------------------------------------------- |
+| `grant_type`    | string | ✅        | Must be `authorization_code`.                                                     |
+| `code`          | string | ✅        | The authorization code received in Step 3.                                        |
+| `redirect_uri`  | string | ✅        | The same `redirect_uri` used in Step 1.                                           |
+| `client_id`     | string | ✅        | Your application's Client ID. (Required if not using Basic Auth header)           |
+| `client_secret` | string | ✅        | Your application's Client Secret. (Required if not using Basic Auth header)       |
+| `code_verifier` | string | ❌        | PKCE: The original `code_verifier` if `code_challenge` was used. (Public clients) |
 
 **Example Token Exchange (Node.js - Server-Side):**
+
 ```javascript
 const fetch = require('node-fetch'); // Or your preferred HTTP client
 
@@ -233,6 +239,7 @@ async function exchangeCodeForTokens(code) {
 ```
 
 **Successful Token Response (JSON):**
+
 ```json
 {
   "token_type": "Bearer",
@@ -242,6 +249,7 @@ async function exchangeCodeForTokens(code) {
   "scope": "view-user detail-user" // Granted scopes
 }
 ```
+
 Store the `access_token` and `refresh_token` securely, associating them with the user. The `access_token` is used to make API requests on behalf of the user.
 
 ## Refresh Token Flow
@@ -250,21 +258,22 @@ Access tokens are short-lived for security reasons. When an access token expires
 
 ```http
 POST /oauth/token HTTP/1.1
-Host: mubarokah.id
+Host: accounts.mubarokah.com
 Content-Type: application/x-www-form-urlencoded
 ```
 
-**Request Body Parameters (`application/x-www-form-urlencoded`):**
+**`Request Body Parameters (application/x-www-form-urlencoded):`**
 
-| Parameter        | Type   | Required | Description                                                                 |
-|------------------|--------|----------|-----------------------------------------------------------------------------|
-| `grant_type`     | string | ✅        | Must be `refresh_token`.                                                    |
-| `refresh_token`  | string | ✅        | The refresh token issued during the token exchange.                         |
-| `client_id`      | string | ✅        | Your application's Client ID.                                               |
-| `client_secret`  | string | ✅        | Your application's Client Secret.                                           |
-| `scope`          | string | ❌        | Optional. Request a subset of the original scopes. If omitted, original scopes are granted. |
+| Parameter       | Type   | Required | Description                                                                                 |
+| --------------- | ------ | -------- | ------------------------------------------------------------------------------------------- |
+| `grant_type`    | string | ✅        | Must be `refresh_token`.                                                                    |
+| `refresh_token` | string | ✅        | The refresh token issued during the token exchange.                                         |
+| `client_id`     | string | ✅        | Your application's Client ID.                                                               |
+| `client_secret` | string | ✅        | Your application's Client Secret.                                                           |
+| `scope`         | string | ❌        | Optional. Request a subset of the original scopes. If omitted, original scopes are granted. |
 
 **Example Refresh Token Request (Node.js - Server-Side):**
+
 ```javascript
 const fetch = require('node-fetch');
 
@@ -313,6 +322,7 @@ async function refreshAccessToken(refreshToken) {
 
 // refreshAccessToken(existingRefreshToken);
 ```
+
 <Info>
   Refresh tokens can also expire or be revoked. If the refresh token flow fails, your application should direct the user to re-initiate the Authorization Code Grant flow.
 </Info>
@@ -323,20 +333,21 @@ For server-to-server communication where no user is directly involved, the Clien
 
 ```http
 POST /oauth/token HTTP/1.1
-Host: mubarokah.id
+Host: accounts.mubarokah.com
 Content-Type: application/x-www-form-urlencoded
 ```
 
-**Request Body Parameters (`application/x-www-form-urlencoded`):**
+**`Request Body Parameters (application/x-www-form-urlencoded):`**
 
-| Parameter        | Type   | Required | Description                                                                 |
-|------------------|--------|----------|-----------------------------------------------------------------------------|
-| `grant_type`     | string | ✅        | Must be `client_credentials`.                                               |
-| `client_id`      | string | ✅        | Your application's Client ID.                                               |
-| `client_secret`  | string | ✅        | Your application's Client Secret.                                           |
-| `scope`          | string | ❌        | Optional. Space-separated list of scopes relevant to client operations.       |
+| Parameter       | Type   | Required | Description                                                             |
+| --------------- | ------ | -------- | ----------------------------------------------------------------------- |
+| `grant_type`    | string | ✅        | Must be `client_credentials`.                                           |
+| `client_id`     | string | ✅        | Your application's Client ID.                                           |
+| `client_secret` | string | ✅        | Your application's Client Secret.                                       |
+| `scope`         | string | ❌        | Optional. Space-separated list of scopes relevant to client operations. |
 
 **Example Client Credentials Request (Node.js - Server-Side):**
+
 ```javascript
 const fetch = require('node-fetch');
 
@@ -380,4 +391,5 @@ async function getAppToken() {
 
 // getAppToken();
 ```
+
 This flow typically does not return a refresh token. When the access token expires, your application must request a new one using the same Client Credentials Grant.

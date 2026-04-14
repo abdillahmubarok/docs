@@ -1,6 +1,6 @@
 ---
-title: Python (FastAPI) Integration
-description: Guide to integrating Mubarokah ID OAuth 2.0 with a Python FastAPI application.
+title: "Python (FastAPI) Integration"
+description: "Guide to integrating Mubarokah ID OAuth 2.0 with a Python FastAPI application."
 ---
 
 # Python (FastAPI) Integration Guide
@@ -9,12 +9,12 @@ This guide provides an asynchronous implementation example for integrating Mubar
 
 ## Prerequisites
 
--   Python 3.7+
--   FastAPI: `pip install fastapi uvicorn`
--   HTTPX for async HTTP requests: `pip install httpx`
--   Pydantic for data validation (comes with FastAPI).
--   Optional: `redis` for token storage: `pip install redis`
--   Optional: `cryptography` for encrypting tokens at rest: `pip install cryptography`
+- Python 3.7+
+- FastAPI: `pip install fastapi uvicorn`
+- HTTPX for async HTTP requests: `pip install httpx`
+- Pydantic for data validation (comes with FastAPI).
+- Optional: `redis` for token storage: `pip install redis`
+- Optional: `cryptography` for encrypting tokens at rest: `pip install cryptography`
 
 ## Project Structure (Conceptual)
 
@@ -78,7 +78,9 @@ def get_settings():
 
 settings = get_settings()
 ```
-**`.env` file example:**
+
+**`.env file example:`**
+
 ```env
 MUBAROKAH_CLIENT_ID="your_fastapi_client_id"
 MUBAROKAH_CLIENT_SECRET="your_fastapi_client_secret"
@@ -297,7 +299,10 @@ async def get_token_service():
     finally:
         await service.redis_client.aclose()
 ```
-<Warning>The `TokenService` uses Redis and Fernet encryption. Ensure Redis is running and `TOKEN_ENCRYPTION_KEY` is securely generated and stored.</Warning>
+
+<Warning>
+  The `TokenService` uses Redis and Fernet encryption. Ensure Redis is running and `TOKEN_ENCRYPTION_KEY` is securely generated and stored.
+</Warning>
 
 ## Security Utilities (`core/security.py`)
 
@@ -483,11 +488,13 @@ async def dashboard(request: Request):
 
 # To run: uvicorn app.main:app --reload --env-file .env
 ```
+
 <Warning>
-**Security & Production Notes:**
-- The `APP_SECRET_KEY` for `SessionMiddleware` must be strong and kept secret.
-- Ensure `TOKEN_ENCRYPTION_KEY` for `TokenService` is securely generated and managed.
-- In production, configure session cookies with `secure=True` (HTTPS only) and appropriate `SameSite` attributes.
+  **Security & Production Notes:**
+
+  - The `APP_SECRET_KEY` for `SessionMiddleware` must be strong and kept secret.
+  - Ensure `TOKEN_ENCRYPTION_KEY` for `TokenService` is securely generated and managed.
+  - In production, configure session cookies with `secure=True` (HTTPS only) and appropriate `SameSite` attributes.
 </Warning>
 
 This FastAPI example provides a robust, asynchronous integration with Mubarokah ID.
